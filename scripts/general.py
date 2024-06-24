@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Author: Ryan Boone
 """
-Usage: query the central manager collector for a current list of available sites
+Usage: scripts used by all or many tests
 """
 
 import htcondor
@@ -9,6 +9,7 @@ import classad
 
 def get_resources() -> dict:
     """
+    Usage: query the collector for a list of resources currently in the OSPool
     @return: dictionary whose keys are the names of all unique GLIDEIN_ResourceName s
              currently visible in the OSPool
     """

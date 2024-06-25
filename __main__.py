@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # Author: Ryan Boone
-#TODO: commenting
 """
-Usage: run a specific test using the exerciser
+Usage: run the exerciser with a variety of options
 """
 
 import htcondor
@@ -20,6 +19,10 @@ from scripts import general
 from scripts import sleep_scripts
 
 def parse_cla() -> argparse.Namespace:
+    """
+    Usage: command line argument parser
+    @return: parsed arguments in argparse.Namespace object
+    """
     parser = argparse.ArgumentParser()
 
     parser.add_argument("test_name",
@@ -47,6 +50,9 @@ def parse_cla() -> argparse.Namespace:
     return parser.parse_args()
 
 def main():
+    """
+    Usage: run the thing
+    """
     args = parse_cla()
 
     if args.flush_memory:

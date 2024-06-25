@@ -28,7 +28,7 @@ To display all available options, run the command:
 $ python __main__.py --help
 ```
 
-Some helpful option to remember:
+Some helpful options to remember:
 
 ```
 $ python __main__.py test_name --flush-memory

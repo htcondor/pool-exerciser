@@ -17,6 +17,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "scripts"))
 
 from scripts import general
 from scripts import sleep_scripts
+from scripts import sha256_scripts
 
 def parse_cla() -> argparse.Namespace:
     """
@@ -28,7 +29,7 @@ def parse_cla() -> argparse.Namespace:
     parser.add_argument("test_name",
                         type=str,
                         metavar="test_name",
-                        choices=["sleep_test"],
+                        choices=["sleep_test", "sha256_test"],
                         help="name of test to be run by exerciser")
 
     parser.add_argument("-f",
@@ -64,10 +65,14 @@ def main():
         resources = general.get_resources()
         if (args.test_name == "sleep_test"):
             sleep_scripts.generate_submit_files(resources)
+        if (args.test_name == "sha256_test"):
+            sha256_scripts.generate_submit_files(resources)
 
     if args.run:
         if (args.test_name == "sleep_test"):
             sleep_scripts.run()
+        if (args.test_name == "sha256_test"):
+            sha256_scripts.run()
 
 if __name__ == "__main__":
     sys.exit(main())

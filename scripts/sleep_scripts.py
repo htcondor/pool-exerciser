@@ -27,7 +27,7 @@ def run():
            Pool_Exerciser/submit_files/sleep_test/
     """
     schedd = htcondor.Schedd()
-    sleep_test_dir = pathlib.Path("./submit_files/sleep_test/")
-    for file in sleep_test_dir.iterdir():
+    submit_dir = pathlib.Path("./submit_files/sleep_test/")
+    for file in submit_dir.iterdir():
         with open(file, "r") as submit_file:
             schedd.submit(htcondor.Submit(submit_file.read()))

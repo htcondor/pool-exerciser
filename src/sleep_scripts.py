@@ -16,7 +16,7 @@ def generate_submit_files(resources: dict):
     """
     for resource in resources:
         with open(f"./submit_files/sleep_test/{resource}.sub", "w") as file:
-            file.write("executable = ./executables/sleep_ex.py\n")
+            file.write("executable = ./tests/sleep_ex.py\n")
             file.write("periodic_remove = JobStatus == 1 && CurrentTime-EnteredCurrentStatus > 60*5\n")
             file.write(f"Requirements = TARGET.GLIDEIN_ResourceName == \"{resource}\"\n")
             file.write("queue\n")

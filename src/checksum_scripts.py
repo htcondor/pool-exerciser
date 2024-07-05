@@ -15,7 +15,7 @@ def generate_submit_files(resources: dict):
     """
     for resource in resources:
         with open(f"./submit_files/checksum_test/{resource}.sub", "w") as file:
-            file.write("executable = ./executables/checksum_ex.py\n")
+            file.write("executable = ./tests/checksum_ex.py\n")
             file.write("arguments = torus.out0.07578.h5 torus.checksum\n")
 
             file.write("output = ./output_files/checksum_test/checksum.out\n")

@@ -5,8 +5,7 @@ Usage: scripts for running simple sleep test
 Note: job will be evicted after 5 min in idle to test eviction ability
 """
 
-import htcondor
-import classad
+import htcondor2
 import pathlib
 
 def generate_submit_files(resources: dict):
@@ -26,8 +25,8 @@ def run():
     Usage: submits the sleep test job at all sites specified by the submit files in
            Pool_Exerciser/submit_files/sleep_test/
     """
-    schedd = htcondor.Schedd()
+    schedd = htcondor2.Schedd()
     submit_dir = pathlib.Path("./submit_files/sleep_test/")
     for file in submit_dir.iterdir():
         with open(file, "r") as submit_file:
-            schedd.submit(htcondor.Submit(submit_file.read()))
+            schedd.submit(htcondor2.Submit(submit_file.read()))

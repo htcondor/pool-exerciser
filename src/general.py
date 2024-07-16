@@ -4,8 +4,7 @@
 Usage: scripts used by all or many tests
 """
 
-import htcondor
-import classad
+import htcondor2
 
 def get_resources() -> dict:
     """
@@ -13,8 +12,8 @@ def get_resources() -> dict:
     @return: dictionary whose keys are the names of all unique GLIDEIN_ResourceName s
              currently visible in the OSPool
     """
-    collector = htcondor.Collector()
-    resources = collector.query(ad_type = htcondor.AdTypes.Startd,
+    collector = htcondor2.Collector()
+    resources = collector.query(ad_type = htcondor2.AdTypes.Startd,
                                 constraint = "!isUndefined(GLIDEIN_ResourceName)",
                                 projection = ["GLIDEIN_ResourceName"])
 

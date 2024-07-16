@@ -4,9 +4,6 @@
 Usage: run the exerciser with a variety of options
 """
 
-import htcondor
-import classad
-
 import pathlib
 
 import argparse

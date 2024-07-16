@@ -4,8 +4,7 @@
 Usage: scripts for running checksum (file transfer corruption) test
 """
 
-import htcondor
-import classad
+import htcondor2
 import pathlib
 
 def generate_submit_files(resources: dict):
@@ -36,8 +35,8 @@ def run():
     Usage: submits the test job to all sites specified by the submit files in
            Pool_Exerciser/submit_files/checksum_test/
     """
-    schedd = htcondor.Schedd()
+    schedd = htcondor2.Schedd()
     submit_dir = pathlib.Path("./submit_files/checksum_test/")
     for file in submit_dir.iterdir():
         with open(file, "r") as submit_file:
-            schedd.submit(htcondor.Submit(submit_file.read()))
+            schedd.submit(htcondor2.Submit(submit_file.read()))

@@ -12,7 +12,7 @@ def get_resources() -> dict:
     @return: dictionary whose keys are the names of all unique GLIDEIN_ResourceName s
              currently visible in the OSPool
     """
-    collector = htcondor2.Collector()
+    collector = htcondor2.Collector("cm-1.ospool.osg-htc.org")
     resources = collector.query(ad_type = htcondor2.AdTypes.Startd,
                                 constraint = "!isUndefined(GLIDEIN_ResourceName)",
                                 projection = ["GLIDEIN_ResourceName"])

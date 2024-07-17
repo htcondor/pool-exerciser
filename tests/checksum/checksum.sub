@@ -1,0 +1,15 @@
+executable = checksum.exe
+arguments = input.h5 input.checksum
+
+output = checksum.out
+error = checksum.err
+log = checksum.log
+
+request_cpus = 1
+request_memory = 1GB
+request_disk = 5GB
+
+should_transfer_files = yes
+transfer_input_files = input.h5, input.checksum
+
+queue

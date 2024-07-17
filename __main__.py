@@ -13,7 +13,6 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
 from src import general
-from src import sleep_scripts
 from src import checksum_scripts
 
 def parse_cla() -> argparse.Namespace:

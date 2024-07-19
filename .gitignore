@@ -2,3 +2,4 @@ submit_files/*
 input_files/*
 output_files/*
 src/__pycache__/*
+working/*

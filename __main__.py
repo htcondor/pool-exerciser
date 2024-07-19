@@ -4,14 +4,13 @@
 Usage: run the exerciser with a variety of options
 """
 
-import pathlib
-
+from pathlib import Path
 import argparse
-
+from datetime import datetime
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 from src import general
 from src import checksum_scripts
 
@@ -50,6 +49,7 @@ def main():
     """
     Usage: run the thing
     """
+    """
     args = parse_cla()
 
     if args.flush_memory:
@@ -69,6 +69,13 @@ def main():
             sleep_scripts.run()
         if (args.test_name == "checksum_test"):
             checksum_scripts.run()
+    """
+    curr_time = datetime.now().strftime("%Y-%m-%d_%H:%M")
+    tests_dir = Path("tests")
+    working_dir = Path("working")
+
+    general.make_working_subdirs(tests_dir, working_dir, curr_time)
+
 
 if __name__ == "__main__":
     sys.exit(main())

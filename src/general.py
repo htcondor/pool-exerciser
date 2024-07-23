@@ -39,6 +39,7 @@ def make_working_subdirs(tests_dir: Path, working_dir: Path, curr_time: str, run
     @param curr_time: time in the format: %Y-%m-%d_%H:%M
     @param run: whether or not to submit the test jobs after creating working subdirs
     """
+    # run exerciser for every test in tests_dir
     for test in tests_dir.iterdir():
         working_subdir_name = test.name + "_" + curr_time
         working_subdir = os.path.join(working_dir, working_subdir_name)
@@ -87,6 +88,7 @@ def copy_test_dir(test_dir: Path, working_subdir: Path) -> Path:
     sub_file_found = False
 
     for item in test_dir.iterdir():
+        # copy files, watching for a single .sub file which is required
         if item.is_file():
             if item.name[-4:] == ".sub":
                 if not sub_file_found:
@@ -98,8 +100,10 @@ def copy_test_dir(test_dir: Path, working_subdir: Path) -> Path:
                     sys.exit(1)
             else:
                 shutil.copy(item, working_subdir)
+        # copy an entire dir tree
         elif item.is_dir():
             shutil.copytree(item, os.path.join(working_subdir, item.name))
+        # copy symlink
         elif item.is_symlink():
             shutil.copy(item, working_subdir)
         else:
@@ -139,12 +143,14 @@ def generate_sub_object(sub_file: Path, resource: str, test_name: str) -> htcond
         print("Exiting...")
         exit(1)
     
+    # add requirement to land on target ResourceName
     req = job.get("Requirements")
     if req is None:
         job["Requirements"] = f"TARGET.GLIDEIN_ResourceName == \"$(ResourceName)\""
     else:
         job["Requirements"] = f"TARGET.GLIDEIN_ResourceName == \"$(ResourceName)\" && " + req
     
+    # pool exerciser identifier attributes
     job["My.is_pool_exerciser"] = "true"
     job["My.pool_exerciser_test"] = test_name
 

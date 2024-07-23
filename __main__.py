@@ -12,7 +12,6 @@ import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 from src import general
-from src import checksum_scripts
 
 def parse_cla() -> argparse.Namespace:
     """
@@ -48,27 +47,6 @@ def parse_cla() -> argparse.Namespace:
 def main():
     """
     Usage: run the thing
-    """
-    """
-    args = parse_cla()
-
-    if args.flush_memory:
-        submit_dir = pathlib.Path(f"./submit_files/{args.test_name}/")
-        for file in submit_dir.iterdir():
-            file.unlink()
-
-    if args.query_collector:
-        resources = general.get_resources()
-        if (args.test_name == "sleep_test"):
-            sleep_scripts.generate_submit_files(resources)
-        if (args.test_name == "checksum_test"):
-            checksum_scripts.generate_submit_files(resources)
-
-    if args.run:
-        if (args.test_name == "sleep_test"):
-            sleep_scripts.run()
-        if (args.test_name == "checksum_test"):
-            checksum_scripts.run()
     """
     curr_time = datetime.now().strftime("%Y-%m-%d_%H:%M")
     tests_dir = Path("tests")

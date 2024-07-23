@@ -74,8 +74,7 @@ def main():
     tests_dir = Path("tests")
     working_dir = Path("working")
 
-    general.make_working_subdirs(tests_dir, working_dir, curr_time)
-
+    general.run_exerciser(tests_dir, working_dir, curr_time, run=True)
 
 if __name__ == "__main__":
     sys.exit(main())

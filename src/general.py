@@ -39,42 +39,44 @@ def make_working_subdirs(tests_dir: Path, working_dir: Path, curr_time: str, run
     @param curr_time: time in the format: %Y-%m-%d_%H:%M
     @param run: whether or not to submit the test jobs after creating working subdirs
     """
-    # run exerciser for every test in tests_dir
-    for test in tests_dir.iterdir():
-        working_subdir_name = test.name + "_" + curr_time
-        working_subdir = os.path.join(working_dir, working_subdir_name)
 
-        if not os.path.exists(working_subdir):
-            # make working subdirectory
-            os.makedirs(working_subdir)
-
-            # copy contents of test dir into working subdir
-            sub_file = copy_test_dir(test, working_subdir)
-
-            # create text file with list of currently available ResourceNames
-            with open(os.path.join(working_subdir, "resource_list.txt"), "w") as resource_list:
-                resources = get_resources()
-                for resource in resources:
-                    resource_list.write(f"{resource}\n")
-
-            # create and submit jobs
-            if run:
-                root_dir = os.getcwd()
-                schedd = htcondor2.Schedd()
-
-                job = generate_sub_object(sub_file, resource, test.name)
-                item_data = [{"ResourceName": resource} for resource in resources]
-
-                job.issue_credentials()
-                os.chdir(working_subdir)
-                submit_result = schedd.submit(job, itemdata = iter(item_data))
-                os.chdir(root_dir)
-
-        else:
-            # need to wait 1 min to allow for unique dir names
+    # create top level working dir for exerciser run
+    timestamp_subdir = os.path.join(working_dir, curr_time)
+    if not os.path.exists(timestamp_subdir):
+        os.makedirs(timestamp_subdir)
+    else:
+        # need to wait 1 min to allow for unique dir names
             print("Error: Please wait at least 1 minute between succesive runs")
             print("Exiting...")
             sys.exit(1)
+
+    # create subdir for each test in tests_dir
+    for test in tests_dir.iterdir():
+        # make working subdir for test
+        working_subdir = os.path.join(timestamp_subdir, test.name)
+        os.makedirs(working_subdir)
+
+        # copy contents of test dir into working subdir
+        sub_file = copy_test_dir(test, working_subdir)
+
+        # create text file with list of currently available ResourceNames
+        with open(os.path.join(working_subdir, "resource_list.txt"), "w") as resource_list:
+            resources = get_resources()
+            for resource in resources:
+                resource_list.write(f"{resource}\n")
+
+        # create and submit jobs if run=True
+        if run:
+            root_dir = os.getcwd()
+            schedd = htcondor2.Schedd()
+
+            job = generate_sub_object(sub_file, resource, test.name)
+            item_data = [{"ResourceName": resource} for resource in resources]
+
+            job.issue_credentials()
+            os.chdir(working_subdir)
+            schedd.submit(job, itemdata = iter(item_data))
+            os.chdir(root_dir)          
 
 def copy_test_dir(test_dir: Path, working_subdir: Path) -> Path:
     """

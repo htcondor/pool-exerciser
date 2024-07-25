@@ -44,15 +44,16 @@ def parse_cla() -> argparse.Namespace:
 
     return parser.parse_args()
 
+
 def main():
     """
     Usage: run the thing
     """
-    curr_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
     tests_dir = Path("tests")
     working_dir = Path("working")
 
-    general.run_exerciser(tests_dir, working_dir, curr_time, run=True)
+    general.run_exerciser(tests_dir, working_dir, run=True)
+
 
 if __name__ == "__main__":
     sys.exit(main())

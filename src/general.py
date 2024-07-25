@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Author: Ryan Boone
 """
-Usage: scripts used by all or many tests
+Usage: functions used by exerciser operation
 """
 
 import htcondor2
@@ -9,6 +9,8 @@ from pathlib import Path
 import os
 import sys
 import shutil
+from datetime import datetime
+
 
 def get_resources() -> dict:
     """
@@ -17,9 +19,11 @@ def get_resources() -> dict:
              currently visible in the OSPool
     """
     collector = htcondor2.Collector("cm-1.ospool.osg-htc.org")
-    resources = collector.query(ad_type = htcondor2.AdTypes.Startd,
-                                constraint = "!isUndefined(GLIDEIN_ResourceName)",
-                                projection = ["GLIDEIN_ResourceName"])
+    resources = collector.query(
+        ad_type=htcondor2.AdTypes.Startd,
+        constraint="!isUndefined(GLIDEIN_ResourceName)",
+        projection=["GLIDEIN_ResourceName"],
+    )
 
     unique_resources = dict()
 
@@ -31,62 +35,68 @@ def get_resources() -> dict:
 
     return unique_resources
 
-def make_working_subdirs(tests_dir: Path, working_dir: Path, curr_time: str, run=False):
+
+def run_exerciser(tests_dir: Path, working_dir: Path, run=False):
     """
-    Usage: create working subdirs in working_dir for each dir in tests_dir
+    Usage: calls necessary methods for setting up, running, and cleaning up exerciser
     @param tests_dir: directory containing all exerciser tests
     @param working_dir: directory for storing info on exerciser runs
-    @param curr_time: time in the format: %Y-%m-%d_%H:%M
-    @param run: whether or not to submit the test jobs after creating working subdirs
+    @param run: whether or not to create working file system and run tests
     """
+    if run:
+        execute_tests(tests_dir, working_dir)
 
+
+def execute_tests(tests_dir: Path, working_dir: Path):
+    """
+    Usage: builds working file system and submits tests
+    @param tests_dir: directory containing all exerciser tests
+    @param working_dir: directory for storing info on exerciser runs
+    """
     # create top level working dir for exerciser run
-    timestamp_subdir = os.path.join(working_dir, curr_time)
-    if not os.path.exists(timestamp_subdir):
-        os.makedirs(timestamp_subdir)
+    curr_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    timestamp_dir = os.path.join(working_dir, curr_time)
+    if not os.path.exists(timestamp_dir):
+        os.makedirs(timestamp_dir)
 
         # create text file with list of currently available ResourceNames
-        with open(os.path.join(timestamp_subdir, "resource_list.txt"), "w") as resource_list:
+        with open(
+            os.path.join(timestamp_dir, "resource_list.txt"), "w"
+        ) as resource_list:
             resources = get_resources()
-            for resource in resources:
+            for resource in resources.keys():
                 resource_list.write(f"{resource}\n")
     else:
         # need to wait 1 min to allow for unique dir names
-            print("Error: Please wait at least 1 minute between succesive runs")
-            print("Exiting...")
-            sys.exit(1)
+        print("Error: Please wait at least 1 minute between succesive runs")
+        print("Exiting...")
+        sys.exit(1)
 
-    # create subdir for each test in tests_dir
     for test in tests_dir.iterdir():
-        # make working subdir for test
-        working_subdir = os.path.join(timestamp_subdir, test.name)
-        os.makedirs(working_subdir)
+        execute_dir, sub_file = create_test_execute_dir(timestamp_dir, test)
 
-        # copy contents of test dir into working subdir
-        sub_file = copy_test_dir(test, working_subdir)
+        root_dir = os.getcwd()
+        schedd = htcondor2.Schedd()
 
-        # create and submit jobs if run=True
-        if run:
-            root_dir = os.getcwd()
-            schedd = htcondor2.Schedd()
+        job = generate_sub_object(sub_file, test.name)
+        item_data = [{"ResourceName": resource} for resource in resources.keys()]
 
-            job = generate_sub_object(sub_file, resource, test.name)
-            item_data = [{"ResourceName": resource} for resource in resources]
+        job.issue_credentials()
+        os.chdir(execute_dir)
+        schedd.submit(job, itemdata=iter(item_data))
+        os.chdir(root_dir)
 
-            job.issue_credentials()
-            os.chdir(working_subdir)
-            schedd.submit(job, itemdata = iter(item_data))
-            os.chdir(root_dir)          
 
-def copy_test_dir(test_dir: Path, working_subdir: Path) -> Path:
+def create_test_execute_dir(timestamp_dir: Path, test_dir: Path) -> tuple:
     """
-    Usage: copies the contents of test_dir into working_dir. preserves any
-           subdir hierarchy
+    Usage: prepares the execute dir by copying files from test_dir.
+    @param timestamp_dir: parent of execute dir, which is the dst of file copy
     @param test_dir: src dir to copy from
-    @param working_subdir: dst dir to copy to
-    @return: path object to the submit file copy in the working subdir. error
-             if there is not exactly one .sub file in the test dir
+    @return: tuple which stores the execute dir, and submit file for the test
     """
+    execute_dir = os.path.join(timestamp_dir, test_dir.name)
+    os.makedirs(execute_dir)
+
     sub_file_found = False
 
     for item in test_dir.iterdir():
@@ -94,47 +104,41 @@ def copy_test_dir(test_dir: Path, working_subdir: Path) -> Path:
         if item.is_file():
             if item.name[-4:] == ".sub":
                 if not sub_file_found:
-                    sub_file = Path(shutil.copy(item, working_subdir))
+                    sub_file = Path(shutil.copy(item, execute_dir))
                     sub_file_found = True
                 else:
-                    print(f"Error: There can only be one .sub file in the test dir \"{test_dir}\"")
+                    print(
+                        f'Error: There can only be one .sub file in the test dir "{test_dir}"'
+                    )
                     print("Exiting...")
                     sys.exit(1)
             else:
-                shutil.copy(item, working_subdir)
+                shutil.copy(item, execute_dir)
         # copy an entire dir tree
         elif item.is_dir():
-            shutil.copytree(item, os.path.join(working_subdir, item.name))
+            shutil.copytree(item, os.path.join(execute_dir, item.name))
         # copy symlink
         elif item.is_symlink():
-            shutil.copy(item, working_subdir)
+            shutil.copy(item, execute_dir)
         else:
-            print("Error: Test directory \"{test_dir}\" must contain only files, directories and symlinks")
+            print(
+                'Error: Test directory "{test_dir}" must contain only files, directories and symlinks'
+            )
             print("Exiting...")
             sys.exit(1)
-    
+
     if not sub_file_found:
-        print(f"Error: There must be one .sub file in the test dir \"{test_dir}\"")
+        print(f'Error: There must be one .sub file in the test dir "{test_dir}"')
         print("Exiting...")
         exit(1)
-    
-    return sub_file
 
-def run_exerciser(tests_dir: Path, working_dir: Path, curr_time: str, run=False):
-    """
-    Usage: calls necessary methods for setting up, running, and cleaning up exerciser
-    @param tests_dir: directory containing all exerciser tests
-    @param working_dir: directory for storing info on exerciser runs
-    @param curr_time: time in the format: %Y-%m-%d_%H:%M
-    @param run: whether or not to submit the test jobs after creating working subdirs
-    """
-    make_working_subdirs(tests_dir, working_dir, curr_time, run)
+    return (execute_dir, sub_file)
 
-def generate_sub_object(sub_file: Path, resource: str, test_name: str) -> htcondor2.Submit:
+
+def generate_sub_object(sub_file: Path, test_name: str) -> htcondor2.Submit:
     """
     Usage: create an htcondor Submit object based on sub_file targetted to resource
     @param sub_file: general submit file to parse through to create Submit object
-    @param resource: target ResourceName as returned by the Collecter
     @param test_name: name of the test as it appears in the Pool_Exerciser/tests/ dir
     """
     job = None
@@ -144,14 +148,16 @@ def generate_sub_object(sub_file: Path, resource: str, test_name: str) -> htcond
         print(f"Error: Invalid submit file for test {test_name}")
         print("Exiting...")
         exit(1)
-    
+
     # add requirement to land on target ResourceName
     req = job.get("Requirements")
     if req is None:
-        job["Requirements"] = f"TARGET.GLIDEIN_ResourceName == \"$(ResourceName)\""
+        job["Requirements"] = f'TARGET.GLIDEIN_ResourceName == "$(ResourceName)"'
     else:
-        job["Requirements"] = f"TARGET.GLIDEIN_ResourceName == \"$(ResourceName)\" && " + req
-    
+        job["Requirements"] = (
+            f'TARGET.GLIDEIN_ResourceName == "$(ResourceName)" && ' + req
+        )
+
     # pool exerciser identifier attributes
     job["My.is_pool_exerciser"] = "true"
     job["My.pool_exerciser_test"] = test_name

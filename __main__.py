@@ -48,7 +48,7 @@ def main():
     """
     Usage: run the thing
     """
-    curr_time = datetime.now().strftime("%Y-%m-%d_%H:%M")
+    curr_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
     tests_dir = Path("tests")
     working_dir = Path("working")
 

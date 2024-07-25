@@ -44,6 +44,12 @@ def make_working_subdirs(tests_dir: Path, working_dir: Path, curr_time: str, run
     timestamp_subdir = os.path.join(working_dir, curr_time)
     if not os.path.exists(timestamp_subdir):
         os.makedirs(timestamp_subdir)
+
+        # create text file with list of currently available ResourceNames
+        with open(os.path.join(timestamp_subdir, "resource_list.txt"), "w") as resource_list:
+            resources = get_resources()
+            for resource in resources:
+                resource_list.write(f"{resource}\n")
     else:
         # need to wait 1 min to allow for unique dir names
             print("Error: Please wait at least 1 minute between succesive runs")
@@ -58,12 +64,6 @@ def make_working_subdirs(tests_dir: Path, working_dir: Path, curr_time: str, run
 
         # copy contents of test dir into working subdir
         sub_file = copy_test_dir(test, working_subdir)
-
-        # create text file with list of currently available ResourceNames
-        with open(os.path.join(working_subdir, "resource_list.txt"), "w") as resource_list:
-            resources = get_resources()
-            for resource in resources:
-                resource_list.write(f"{resource}\n")
 
         # create and submit jobs if run=True
         if run:
@@ -138,8 +138,8 @@ def generate_sub_object(sub_file: Path, resource: str, test_name: str) -> htcond
     @param test_name: name of the test as it appears in the Pool_Exerciser/tests/ dir
     """
     job = None
-    with open(sub_file, "r") as sub_file:
-        job = htcondor2.Submit(sub_file.read())
+    with open(sub_file, "r") as f:
+        job = htcondor2.Submit(f.read())
     if job is None:
         print(f"Error: Invalid submit file for test {test_name}")
         print("Exiting...")

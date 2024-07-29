@@ -78,11 +78,11 @@ def execute_tests(tests_dir: Path, working_dir: Path):
         root_dir = os.getcwd()
         schedd = htcondor2.Schedd()
 
+        os.chdir(execute_dir)
         job = generate_sub_object(sub_file, test.name)
         item_data = [{"ResourceName": resource} for resource in resources.keys()]
 
         job.issue_credentials()
-        os.chdir(execute_dir)
         schedd.submit(job, itemdata=iter(item_data))
         os.chdir(root_dir)
 

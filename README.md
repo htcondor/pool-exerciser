@@ -1,21 +1,22 @@
 # Pool Exerciser
 
 The goal of the Pool Exerciser is to provide an infrastructure that collects
-accurate, reliable data about the current state of the OSPool, and uses that 
-information to send specific tests to targeted sites within the OSPool to
-verify correct operation and/or diagnose issues.
+accurate, reliable data about the current state of the OSPool. It then uses
+that information to send out samples of test jobs to specific locations in
+the OSPool. 
+
+Tests can be added by writing an HTCondor submit file and an executable,
+ and can then be run on the existing Pool Exerciser infrastructure.
 
 This project was based on the "IGWN Pool Exorciser" designed by James Clark.
 His GitLab repository can be found here:
-https://git.ligo.org/computing/distributed/igwn-pool-exorciser/-/blob/main/README.md?ref_type=heads
+[IGWN Pool Exerciser](https://git.ligo.org/computing/distributed/igwn-pool-exorciser/-/blob/main/README.md?ref_type=heads)
 
 ## Functionality
 
 The exerciser works by querying the central manager's collector to obtain
-a list of all the ResourceNames currently available in the OSPool. It then
-constructs an htcondor submit file for each ResourceName for the specific
-test selected at the command line. Finally it submits the test to each
-ResourceName. 
+a list of all the resources currently available in the OSPool. It then
+creates working directories for each selected test. 
 
 ## Usage
 

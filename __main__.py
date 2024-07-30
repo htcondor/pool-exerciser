@@ -4,9 +4,7 @@
 Usage: run the exerciser with a variety of options
 """
 
-from pathlib import Path
 import argparse
-from datetime import datetime
 import sys
 import os
 
@@ -22,7 +20,7 @@ def parse_cla() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "run-tests",
+        "run_tests",
         nargs="*",
         default="all",
         help="specify the test/s to run in a space seperated list. if no tests "
@@ -33,47 +31,65 @@ def parse_cla() -> argparse.Namespace:
         "-f",
         "--flush-all",
         action="store_true",
-        help="deletes all subdirectories in /working",
+        help="deletes all subdirectories in the working dir. if this option is used with "
+        + "-w, it will flush the contents of that dir rather than the default working dir.",
     )
 
-    # add ability to specify any amount of date string ex. 2024-04
     parser.add_argument(
         "-d",
         "--flush-by-date",
         metavar="YYYY-MM-DD_hh-mm",
-        help=f"deletes all subdirectories in /working older than the arg value.\n"
-        + "argument value must be given in YYYY-MM-DD_hh-mm format. "
-        + "ex: 2024-07-31_15-57",
+        help=f"deletes all subdirectories in the working dir older than the arg value. "
+        + "if this option is used with "
+        + "-w, it will flush the contents of that dir rather than the default working dir. "
+        + "argument value must include a year, but all other date specifications are optional. "
+        + "if included, they must follow the YYYY-MM-DD_hh-mm format. for example, the following "
+        + "are valid arg values (seperated by commas): 2024, 2024-07, 2024-07-30_02, "
+        + "2024-07-31_14-53. but the following are invalid args: 202, 2024_14, 07-31, 2024-",
     )
 
     parser.add_argument(
         "-p",
         "--print-tests",
         action="store_true",
-        help="print a list of all the available exerciser tests. "
-        + "including this option prevents the exerciser from running",
+        help="print a list of all the available exerciser tests. if this option is used with "
+        + "-t, it will print the contents of that dir rather than the default tests dir. ",
     )
 
     parser.add_argument(
         "-s",
         "--snapshot",
         action="store_true",
-        help="query the collector and print a list of currently available resources. "
-        + "including this option prevents the exerciser from running",
+        help="query the collector and print a list of currently available resources. ",
     )
 
     parser.add_argument(
         "-w",
-        "--change-working-directory",
+        "--change-working-dir",
         metavar="new_working_dir",
-        help="changes the location of the root working dir to the specified dir for this run"
+        help="changes the location of the working dir to the specified dir for this run. "
+        + "the arg should be given as str representation of an absolute path to a dir, "
+        + "or a relative path to the Pool_Exerciser root dir. "
+        + "ex: -w ../../dir/subdir/new_working_dir",
     )
 
     parser.add_argument(
         "-t",
-        "--change-test-directory",
+        "--change-test-dir",
         metavar="new_test_dir",
-        help="changes the location of the root test dir to the specified dir for this run",
+        help="changes the location of the test dir to the specified dir for this run. "
+        + "the arg should be given as str representation of an absolute path to a dir, "
+        + "or a relative path to the Pool_Exerciser root dir. "
+        + "ex: -t ../../dir/subdir/new_test_dir"
+    )
+
+    parser.add_argument(
+        "-b",
+        "--block-run",
+        action="store_true",
+        help="selecting this option prevents the exerciser from running. all other options "
+        + "will still be executed, so it can be useful if you wish to flush the working dir "
+        + "without running a test, or use any other option"
     )
 
     return parser.parse_args()
@@ -83,12 +99,11 @@ def main():
     """
     Usage: run the thing
     """
-    args = parse_cla()
+    #args = parse_cla()
+    #print(args)
+    #exit(0)
 
-    tests_dir = Path("tests")
-    working_dir = Path("working")
-
-    general.run_exerciser(tests_dir, working_dir, run=True)
+    general.run_exerciser(parse_cla())
 
 
 if __name__ == "__main__":

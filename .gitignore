@@ -1,3 +1,4 @@
 src/__pycache__/*
 working/*
 tests/checksum/input.h5
+tmp/*

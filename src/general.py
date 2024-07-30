@@ -10,6 +10,7 @@ import os
 import sys
 import shutil
 from datetime import datetime
+import argparse
 
 
 def get_resources() -> dict:
@@ -36,15 +37,124 @@ def get_resources() -> dict:
     return unique_resources
 
 
-def run_exerciser(tests_dir: Path, working_dir: Path, run=False):
+def run_exerciser(args: argparse.Namespace):
     """
-    Usage: calls necessary methods for setting up, running, and cleaning up exerciser
-    @param tests_dir: directory containing all exerciser tests
-    @param working_dir: directory for storing info on exerciser runs
-    @param run: whether or not to create working file system and run tests
+    Usage: interprets cla and runs the exerciser based on the provided options
+    @param args: program arguments as returned by parse_cla() in __main__
     """
-    if run:
+    # -w option
+    # changes location of working_dir, creating the dir if needed
+    if args.change_working_dir == None:
+        working_dir = Path("working")
+    else:
+        working_dir = Path(args.change_working_dir)
+        if not os.path.exists(working_dir):
+            os.makedirs(working_dir)
+
+    # -t option
+    # changes location of tests_dir, exiting if the dir dne
+    if args.change_test_dir == None:
+        tests_dir = Path("tests")
+    else:
+        tests_dir = Path(args.change_test_dir)
+        if not os.path.exists(tests_dir):
+            print("Error: Test dir must exist. Check arg val for -t and try again")
+            print("Exiting...")
+            sys.exit(1)
+
+    # -s option
+    # prints the list of currenlt available resources to the command line
+    if args.snapshot:
+        print("Here is a list of all currently available GLIDEIN_ResourceName s:")
+        resources = get_resources()
+        for resource in resources.keys():
+            print(resource)
+        print("End of resource list")
+
+    # -p option
+    # prints all the test names in tests_dir to the command line
+    if args.print_tests:
+        print("Here is a list of all tests in the test dir:")
+        for test in tests_dir.iterdir():
+            print(test.name)
+        print("End of test list")
+
+    # -f option
+    # clears the working_dir
+    if args.flush_all:
+        print("Flushing entire working directory")
+        for item in working_dir.iterdir():
+            shutil.rmtree(item)
+
+    # -d option
+    # clears all timestamp_dirs in working_dir older than the date provided
+    # will exit with an err if the date is not provided in the requested format
+    if (not args.flush_by_date == None) and (not args.flush_all):
+        print("Flushing by date")
+        date = args.flush_by_date
+        invalid_date = False
+        try:
+            if len(date) < 4:
+                invalid_date = True
+            if len(date) == 4:
+                parsed_date = datetime.strptime(date, "%Y")
+            if 4 < len(date) < 7:
+                invalid_date = True
+            if len(date) == 7:
+                parsed_date = datetime.strptime(date, "%Y-%m")
+            if 7 < len(date) < 10:
+                invalid_date = True
+            if len(date) == 10:
+                parsed_date = datetime.strptime(date, "%Y-%m-%d")
+            if 10 < len(date) < 13:
+                invalid_date = True
+            if len(date) == 13:
+                parsed_date = datetime.strptime(date, "%Y-%m-%d_%H")
+            if 13 < len(date) < 16:
+                invalid_date = True
+            if len(date) == 16:
+                parsed_date = datetime.strptime(date, "%Y-%m-%d_%H-%M")
+            if len(date) > 16:
+                invalid_date = True
+        except ValueError:
+            invalid_date = True
+        if invalid_date:
+            print("Error: Invalid date str format. Check arg val for -d and try again")
+            print("Exiting...")
+            sys.exit(1)
+        for subdir in working_dir.iterdir():
+            subdir_date = datetime.strptime(subdir.name, "%Y-%m-%d_%H-%M")
+            if subdir_date < parsed_date:
+                shutil.rmtree(subdir)
+
+    # -b option
+    # prevents the exerciser from running
+    if args.block_run:
+        sys.exit(0)
+
+    # run_tests postitional arg
+    # if no arg/s are provided, runs every test in tests_dir
+    # if arg/s are provided, only runs those tests
+    # this is done by moving any unselected tests out of the tests_dir to a tmp_dir
+    # then the exerciser is ran on the remaining tests in tests_dir
+    # finally, all the tests in tmp_dir are moved back into tests_dir
+    if args.run_tests == "all":
         execute_tests(tests_dir, working_dir)
+    else:
+        tmp_dir = Path("tmp")
+        if not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
+            for test in tests_dir.iterdir():
+                if test not in args.run_tests:
+                    shutil.move(test, tmp_dir)
+            execute_tests(tests_dir, working_dir)
+            for test in tmp_dir.iterdir():
+                shutil.move(test, tests_dir)
+            shutil.rmtree(tmp_dir)
+        else:
+            print("Error: Cannot create dir named \"tmp\"")
+            print("Exiting...")
+            sys.exit(1)
 
 
 def execute_tests(tests_dir: Path, working_dir: Path):
@@ -104,7 +214,7 @@ def create_test_execute_dir(timestamp_dir: Path, test_dir: Path) -> tuple:
         if item.is_file():
             if item.name[-4:] == ".sub":
                 if not sub_file_found:
-                    sub_file = Path(shutil.copy(item, execute_dir))
+                    sub_file = Path(shutil.copy(item, execute_dir)).absolute()
                     sub_file_found = True
                 else:
                     print(

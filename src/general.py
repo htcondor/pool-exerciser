@@ -43,13 +43,15 @@ def run_exerciser(args: argparse.Namespace):
     @param args: program arguments as returned by parse_cla() in __main__
     """
     # -w option
-    # changes location of working_dir, creating the dir if needed
+    # changes location of working_dir, exiting if the dir dne
     if args.change_working_dir == None:
         working_dir = Path("working")
     else:
         working_dir = Path(args.change_working_dir)
         if not os.path.exists(working_dir):
-            os.makedirs(working_dir)
+            print("Error: Working dir must exist. Check arg val for -w and try again")
+            print("Exiting...")
+            sys.exit(1)
 
     # -t option
     # changes location of tests_dir, exiting if the dir dne
@@ -92,29 +94,20 @@ def run_exerciser(args: argparse.Namespace):
     if (not args.flush_by_date == None) and (not args.flush_all):
         print("Flushing by date")
         date = args.flush_by_date
+        date_length = len(date)
         invalid_date = False
         try:
-            if len(date) < 4:
-                invalid_date = True
-            if len(date) == 4:
-                parsed_date = datetime.strptime(date, "%Y")
-            if 4 < len(date) < 7:
-                invalid_date = True
-            if len(date) == 7:
-                parsed_date = datetime.strptime(date, "%Y-%m")
-            if 7 < len(date) < 10:
-                invalid_date = True
-            if len(date) == 10:
-                parsed_date = datetime.strptime(date, "%Y-%m-%d")
-            if 10 < len(date) < 13:
-                invalid_date = True
-            if len(date) == 13:
-                parsed_date = datetime.strptime(date, "%Y-%m-%d_%H")
-            if 13 < len(date) < 16:
-                invalid_date = True
-            if len(date) == 16:
-                parsed_date = datetime.strptime(date, "%Y-%m-%d_%H-%M")
-            if len(date) > 16:
+            if date_length == 4:
+                format_date = datetime.strptime(date, "%Y")
+            elif date_length == 7:
+                format_date = datetime.strptime(date, "%Y-%m")
+            elif date_length == 10:
+                format_date = datetime.strptime(date, "%Y-%m-%d")
+            elif date_length == 13:
+                format_date = datetime.strptime(date, "%Y-%m-%d_%H")
+            elif date_length == 16:
+                format_date = datetime.strptime(date, "%Y-%m-%d_%H-%M")
+            else:
                 invalid_date = True
         except ValueError:
             invalid_date = True
@@ -124,40 +117,16 @@ def run_exerciser(args: argparse.Namespace):
             sys.exit(1)
         for subdir in working_dir.iterdir():
             subdir_date = datetime.strptime(subdir.name, "%Y-%m-%d_%H-%M")
-            if subdir_date < parsed_date:
+            if subdir_date < format_date:
                 shutil.rmtree(subdir)
 
     # -b option
-    # prevents the exerciser from running
-    if args.block_run:
-        sys.exit(0)
-
-    # run_tests postitional arg
-    # if no arg/s are provided, runs every test in tests_dir
-    # if arg/s are provided, only runs those tests
-    # this is done by moving any unselected tests out of the tests_dir to a tmp_dir
-    # then the exerciser is ran on the remaining tests in tests_dir
-    # finally, all the tests in tmp_dir are moved back into tests_dir
-    if args.run_tests == "all":
-        execute_tests(tests_dir, working_dir)
-    else:
-        tmp_dir = Path("tmp")
-        if not os.path.exists(tmp_dir):
-            os.makedirs(tmp_dir)
-            for test in tests_dir.iterdir():
-                if test not in args.run_tests:
-                    shutil.move(test, tmp_dir)
-            execute_tests(tests_dir, working_dir)
-            for test in tmp_dir.iterdir():
-                shutil.move(test, tests_dir)
-            shutil.rmtree(tmp_dir)
-        else:
-            print("Error: Cannot create dir named \"tmp\"")
-            print("Exiting...")
-            sys.exit(1)
+    # controls whether the excersier runs. set to True by default
+    if args.run:
+        execute_tests(tests_dir, working_dir, args.tests)
 
 
-def execute_tests(tests_dir: Path, working_dir: Path):
+def execute_tests(tests_dir: Path, working_dir: Path, test_list: list):
     """
     Usage: builds working file system and submits tests
     @param tests_dir: directory containing all exerciser tests
@@ -182,7 +151,7 @@ def execute_tests(tests_dir: Path, working_dir: Path):
         print("Exiting...")
         sys.exit(1)
 
-    for test in tests_dir.iterdir():
+    for test in iter_tests(tests_dir, test_list):
         execute_dir, sub_file = create_test_execute_dir(timestamp_dir, test)
 
         root_dir = os.getcwd()
@@ -196,6 +165,26 @@ def execute_tests(tests_dir: Path, working_dir: Path):
         schedd.submit(job, itemdata=iter(item_data))
         os.chdir(root_dir)
 
+def iter_tests(tests_dir: Path, test_list: list):
+    """
+    Usage: Iterate through the tests_dir and the test_list provided at the command line
+    @param tests_dir: directory containing all available exerciser tests
+    @param test_list: list provided as an arg at the command line. requested tests to run
+    @return: generator of the tests that will be run by the exerciser
+             only returns tests that appear in both tests_dir and test_list
+             if test_list is empty, returns entire contents of tests_dir
+    """
+    if len(test_list) == 0:
+        for test in tests_dir.iterdir():
+            yield test
+    else:
+        for test in test_list:
+            test_path = os.path.join(tests_dir, test)
+            if os.path.exists(test_path):
+                yield Path(test_path)
+            else:
+                print(f"Error: Invalid test \"{test}\", check arg val")
+                print("Continuing with remaining tests...")
 
 def create_test_execute_dir(timestamp_dir: Path, test_dir: Path) -> tuple:
     """

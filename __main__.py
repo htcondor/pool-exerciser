@@ -20,9 +20,9 @@ def parse_cla() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "run_tests",
+        "tests",
         nargs="*",
-        default="all",
+        default=[],
         help="specify the test/s to run in a space seperated list. if no tests "
         + "are listed, the exerciser will run all available tests.",
     )
@@ -31,6 +31,7 @@ def parse_cla() -> argparse.Namespace:
         "-f",
         "--flush-all",
         action="store_true",
+        dest="flush_all",
         help="deletes all subdirectories in the working dir. if this option is used with "
         + "-w, it will flush the contents of that dir rather than the default working dir.",
     )
@@ -39,6 +40,7 @@ def parse_cla() -> argparse.Namespace:
         "-d",
         "--flush-by-date",
         metavar="YYYY-MM-DD_hh-mm",
+        dest="flush_by_date",
         help=f"deletes all subdirectories in the working dir older than the arg value. "
         + "if this option is used with "
         + "-w, it will flush the contents of that dir rather than the default working dir. "
@@ -52,6 +54,7 @@ def parse_cla() -> argparse.Namespace:
         "-p",
         "--print-tests",
         action="store_true",
+        dest="print_tests",
         help="print a list of all the available exerciser tests. if this option is used with "
         + "-t, it will print the contents of that dir rather than the default tests dir. ",
     )
@@ -60,6 +63,7 @@ def parse_cla() -> argparse.Namespace:
         "-s",
         "--snapshot",
         action="store_true",
+        dest="snapshot",
         help="query the collector and print a list of currently available resources. ",
     )
 
@@ -67,6 +71,7 @@ def parse_cla() -> argparse.Namespace:
         "-w",
         "--change-working-dir",
         metavar="new_working_dir",
+        dest="change_working_dir",
         help="changes the location of the working dir to the specified dir for this run. "
         + "the arg should be given as str representation of an absolute path to a dir, "
         + "or a relative path to the Pool_Exerciser root dir. "
@@ -77,6 +82,7 @@ def parse_cla() -> argparse.Namespace:
         "-t",
         "--change-test-dir",
         metavar="new_test_dir",
+        dest="change_test_dir",
         help="changes the location of the test dir to the specified dir for this run. "
         + "the arg should be given as str representation of an absolute path to a dir, "
         + "or a relative path to the Pool_Exerciser root dir. "
@@ -86,10 +92,10 @@ def parse_cla() -> argparse.Namespace:
     parser.add_argument(
         "-b",
         "--block-run",
-        action="store_true",
+        action="store_false",
+        dest="run",
         help="selecting this option prevents the exerciser from running. all other options "
-        + "will still be executed, so it can be useful if you wish to flush the working dir "
-        + "without running a test, or use any other option"
+        + "will still be executed, but no execution dir will be created, and no jobs will run"
     )
 
     return parser.parse_args()
@@ -99,10 +105,6 @@ def main():
     """
     Usage: run the thing
     """
-    #args = parse_cla()
-    #print(args)
-    #exit(0)
-
     general.run_exerciser(parse_cla())
 
 

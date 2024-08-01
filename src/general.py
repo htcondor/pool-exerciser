@@ -159,11 +159,15 @@ def execute_tests(tests_dir: Path, working_dir: Path, test_list: list):
 
         os.chdir(execute_dir)
         job = generate_sub_object(sub_file, test.name)
-        item_data = [{"ResourceName": resource} for resource in resources.keys()]
+        item_data = [
+            {"ResourceName": resource, "uniq_output_dir": f"results/{resource}"}
+            for resource in resources.keys()
+        ]
 
         job.issue_credentials()
         schedd.submit(job, itemdata=iter(item_data))
         os.chdir(root_dir)
+
 
 def iter_tests(tests_dir: Path, test_list: list):
     """
@@ -183,8 +187,9 @@ def iter_tests(tests_dir: Path, test_list: list):
             if os.path.exists(test_path):
                 yield Path(test_path)
             else:
-                print(f"Error: Invalid test \"{test}\", check arg val")
+                print(f'Error: Invalid test "{test}", check arg val')
                 print("Continuing with remaining tests...")
+
 
 def create_test_execute_dir(timestamp_dir: Path, test_dir: Path) -> tuple:
     """
@@ -221,7 +226,8 @@ def create_test_execute_dir(timestamp_dir: Path, test_dir: Path) -> tuple:
             shutil.copy(item, execute_dir)
         else:
             print(
-                'Error: Test directory "{test_dir}" must contain only files, directories and symlinks'
+                'Error: Test directory "{test_dir}" must contain only files, '
+                + "directories and symlinks"
             )
             print("Exiting...")
             sys.exit(1)

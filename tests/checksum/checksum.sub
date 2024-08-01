@@ -1,9 +1,9 @@
 executable = checksum.exe
 arguments = input.h5 input.checksum
 
-output = checksum.out
-error = checksum.err
-log = checksum.log
+output = $(uniq_output_dir)/checksum.out
+error = $(uniq_output_dir)/checksum.err
+log = $(uniq_output_dir)/checksum.log
 
 request_cpus = 1
 request_memory = 1GB

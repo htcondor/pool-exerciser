@@ -92,29 +92,8 @@ def run_exerciser(args: argparse.Namespace):
     # clears all timestamp_dirs in working_dir older than the date provided
     # will exit with an err if the date is not provided in the requested format
     if (not args.flush_by_date == None) and (not args.flush_all):
-        print("Flushing by date")
-        date = args.flush_by_date
-        date_length = len(date)
-        invalid_date = False
-        try:
-            if date_length == 4:
-                format_date = datetime.strptime(date, "%Y")
-            elif date_length == 7:
-                format_date = datetime.strptime(date, "%Y-%m")
-            elif date_length == 10:
-                format_date = datetime.strptime(date, "%Y-%m-%d")
-            elif date_length == 13:
-                format_date = datetime.strptime(date, "%Y-%m-%d_%H")
-            elif date_length == 16:
-                format_date = datetime.strptime(date, "%Y-%m-%d_%H-%M")
-            else:
-                invalid_date = True
-        except ValueError:
-            invalid_date = True
-        if invalid_date:
-            print("Error: Invalid date str format. Check arg val for -d and try again")
-            print("Exiting...")
-            sys.exit(1)
+        print("Flushing working directory by date")
+        format_date = parse_date(args.flush_by_date)
         for subdir in working_dir.iterdir():
             subdir_date = datetime.strptime(subdir.name, "%Y-%m-%d_%H-%M")
             if subdir_date < format_date:
@@ -124,6 +103,45 @@ def run_exerciser(args: argparse.Namespace):
     # controls whether the excersier runs. set to True by default
     if args.run:
         execute_tests(tests_dir, working_dir, args.tests)
+
+
+def parse_date(date_from_cla: str) -> str:
+    """
+    Usage: parse through date_time argument from the command line (option -d)
+    @param date_from_cla: date string as entered at the command line
+    @return: datetime formatted str representation of the date_from_cla
+    """
+    DATETIME_FORMAT_OPTS = {"date": ["%Y", "%m", "%d"], "time": ["%H", "%M"]}
+
+    # YYYY-MM-DD_HH-MM
+    num_hyphens = date_from_cla.count("-")
+    if num_hyphens > 3 or (num_hyphens == 3 and "_" not in date_from_cla):
+        print(
+            f"Error: Invalid date time '{date_from_cla}' provided. Check arg val for -d"
+        )
+        print("Exiting...")
+        sys.exit(1)
+
+    # date format index
+    dfi = num_hyphens if num_hyphens == 3 else num_hyphens + 1
+
+    date_fmt = "-".join(DATETIME_FORMAT_OPTS["date"][:dfi])
+    date_fmt += (
+        "_" + "-".join(DATETIME_FORMAT_OPTS["time"][: num_hyphens - 1])
+        if "_" in date_from_cla
+        else ""
+    )
+
+    try:
+        format_date = datetime.strptime(date_from_cla, date_fmt)
+    except ValueError:
+        print(
+            f"Error: Invalid date time '{date_from_cla}' provided. Check arg val for -d"
+        )
+        print("Exiting...")
+        sys.exit(1)
+
+    return format_date
 
 
 def execute_tests(tests_dir: Path, working_dir: Path, test_list: list):

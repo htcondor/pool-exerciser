@@ -278,7 +278,28 @@ def generate_sub_object(sub_file: Path, test_name: str) -> htcondor2.Submit:
         job["Requirements"] = f'TARGET.GLIDEIN_ResourceName == "$(ResourceName)"'
     else:
         job["Requirements"] = (
-            f'TARGET.GLIDEIN_ResourceName == "$(ResourceName)" && ' + req
+            f'(TARGET.GLIDEIN_ResourceName == "$(ResourceName)") && ({req})'
+        )
+
+    # add periodic removal statement
+    # job should be removed if it is in idle or running for more than 4 hours, if it ever
+    # goes on hold, or if it restarts more than 10 times
+    sec_in_4hr = 60 * 60 * 4
+    prdc_rm = job.get("periodic_remove")
+    if prdc_rm is None:
+        job["periodic_remove"] = (
+            f"(JobStatus == 1 && CurrentTime-EnteredCurrentStatus > {sec_in_4hr}) || "
+            + f"(JobStatus == 2 && CurrentTime-EnteredCurrentStatus > {sec_in_4hr}) || "
+            + "(JobStatus == 5) || "
+            + "(NumShadowStarts > 10)"
+        )
+    else:
+        job["periodic_remove"] = (
+            f"(JobStatus == 1 && CurrentTime-EnteredCurrentStatus > {sec_in_4hr}) || "
+            + f"(JobStatus == 2 && CurrentTime-EnteredCurrentStatus > {sec_in_4hr}) || "
+            + "(JobStatus == 5) || "
+            + "(NumShadowStarts > 10) || "
+            + f"({prdc_rm})"
         )
 
     # pool exerciser identifier attributes

@@ -3,7 +3,7 @@ arguments = input.h5 input.checksum
 
 output = $(uniq_output_dir)/checksum.out
 error = $(uniq_output_dir)/checksum.err
-log = $(uniq_output_dir)/checksum.log
+log = checksum.log
 
 request_cpus = 1
 request_memory = 1GB

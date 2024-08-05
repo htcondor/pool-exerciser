@@ -23,8 +23,8 @@ def parse_cla() -> argparse.Namespace:
         "tests",
         nargs="*",
         default=[],
-        help="specify the test/s to run in a space seperated list. if no tests "
-        + "are listed, the exerciser will run all available tests.",
+        help="Comma separated list of specific tests to execute. "
+        + "If not specified all available tests are executed.",
     )
 
     parser.add_argument(
@@ -32,8 +32,8 @@ def parse_cla() -> argparse.Namespace:
         "--flush-all",
         action="store_true",
         dest="flush_all",
-        help="deletes all subdirectories in the working dir. if this option is used with "
-        + "-w, it will flush the contents of that dir rather than the default working dir.",
+        help="Clears out all previous exerciser execution subdirectories "
+        + "from the specified working directory.",
     )
 
     parser.add_argument(
@@ -41,13 +41,10 @@ def parse_cla() -> argparse.Namespace:
         "--flush-by-date",
         metavar="YYYY-MM-DD_hh-mm",
         dest="flush_by_date",
-        help=f"deletes all subdirectories in the working dir older than the arg value. "
-        + "if this option is used with "
-        + "-w, it will flush the contents of that dir rather than the default working dir. "
-        + "argument value must include a year, but all other date specifications are optional. "
-        + "if included, they must follow the YYYY-MM-DD_hh-mm format. for example, the following "
-        + "are valid arg values (seperated by commas): 2024, 2024-07, 2024-07-30_02, "
-        + "2024-07-31_14-53. but the following are invalid args: 202, 2024_14, 07-31, 2024-",
+        help=f"Removes all exerciser execution subdirectories in the specified "
+        + "working directory older than the specified date/time. Note: "
+        + "date/time can be any level of specificity from just YYYY to full "
+        + "YYYY-MM-DD_hh-mm format.",
     )
 
     parser.add_argument(
@@ -55,8 +52,7 @@ def parse_cla() -> argparse.Namespace:
         "--print-tests",
         action="store_true",
         dest="print_tests",
-        help="print a list of all the available exerciser tests. if this option is used with "
-        + "-t, it will print the contents of that dir rather than the default tests dir. ",
+        help="prints the list of all available tests found in the specified test directory.",
     )
 
     parser.add_argument(
@@ -64,29 +60,23 @@ def parse_cla() -> argparse.Namespace:
         "--snapshot",
         action="store_true",
         dest="snapshot",
-        help="query the collector and print a list of currently available resources. ",
+        help="prints a list of all currently available resources in the pool.",
     )
 
     parser.add_argument(
         "-w",
-        "--change-working-dir",
-        metavar="new_working_dir",
-        dest="change_working_dir",
-        help="changes the location of the working dir to the specified dir for this run. "
-        + "the arg should be given as str representation of an absolute path to a dir, "
-        + "or a relative path to the Pool_Exerciser root dir. "
-        + "ex: -w ../../dir/subdir/new_working_dir",
+        "--working-dir",
+        metavar="directory_path",
+        dest="working_dir",
+        help="Specify a specific working directory for the exerciser to execute in.",
     )
 
     parser.add_argument(
         "-t",
-        "--change-test-dir",
-        metavar="new_test_dir",
-        dest="change_test_dir",
-        help="changes the location of the test dir to the specified dir for this run. "
-        + "the arg should be given as str representation of an absolute path to a dir, "
-        + "or a relative path to the Pool_Exerciser root dir. "
-        + "ex: -t ../../dir/subdir/new_test_dir"
+        "--test-dir",
+        metavar="directory_path",
+        dest="test_dir",
+        help="Specifies a directory containing available exerciser tests to execute.",
     )
 
     parser.add_argument(
@@ -94,8 +84,7 @@ def parse_cla() -> argparse.Namespace:
         "--block-run",
         action="store_false",
         dest="run",
-        help="selecting this option prevents the exerciser from running. all other options "
-        + "will still be executed, but no execution dir will be created, and no jobs will run"
+        help="Disables execution of tests.",
     )
 
     return parser.parse_args()
@@ -105,7 +94,8 @@ def main():
     """
     Usage: run the thing
     """
-    general.run_exerciser(parse_cla())
+    args = parse_cla()
+    general.run_exerciser(args)
 
 
 if __name__ == "__main__":

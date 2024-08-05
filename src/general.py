@@ -44,10 +44,10 @@ def run_exerciser(args: argparse.Namespace):
     """
     # -w option
     # changes location of working_dir, exiting if the dir dne
-    if args.change_working_dir == None:
+    if args.working_dir == None:
         working_dir = Path("working")
     else:
-        working_dir = Path(args.change_working_dir)
+        working_dir = Path(args.working_dir)
         if not os.path.exists(working_dir):
             print("Error: Working dir must exist. Check arg val for -w and try again")
             print("Exiting...")
@@ -55,10 +55,10 @@ def run_exerciser(args: argparse.Namespace):
 
     # -t option
     # changes location of tests_dir, exiting if the dir dne
-    if args.change_test_dir == None:
+    if args.test_dir == None:
         tests_dir = Path("tests")
     else:
-        tests_dir = Path(args.change_test_dir)
+        tests_dir = Path(args.test_dir)
         if not os.path.exists(tests_dir):
             print("Error: Test dir must exist. Check arg val for -t and try again")
             print("Exiting...")

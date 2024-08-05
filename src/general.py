@@ -49,8 +49,7 @@ def run_exerciser(args: argparse.Namespace):
     else:
         working_dir = Path(args.working_dir)
         if not os.path.exists(working_dir):
-            print("Error: Working dir must exist. Check arg val for -w and try again")
-            print("Exiting...")
+            print(f"Error: Specified working directory {working_dir} does not exist")
             sys.exit(1)
 
     # -t option
@@ -60,18 +59,18 @@ def run_exerciser(args: argparse.Namespace):
     else:
         tests_dir = Path(args.test_dir)
         if not os.path.exists(tests_dir):
-            print("Error: Test dir must exist. Check arg val for -t and try again")
-            print("Exiting...")
+            print(f"Error: Specified test directory {tests_dir} does not exist")
             sys.exit(1)
 
     # -s option
     # prints the list of currenlt available resources to the command line
     if args.snapshot:
-        print("Here is a list of all currently available GLIDEIN_ResourceName s:")
+        print("Here is a list of all currently available resources:")
         resources = get_resources()
         for resource in resources.keys():
             print(resource)
         print("End of resource list")
+        sys.exit(0)
 
     # -p option
     # prints all the test names in tests_dir to the command line
@@ -80,6 +79,7 @@ def run_exerciser(args: argparse.Namespace):
         for test in tests_dir.iterdir():
             print(test.name)
         print("End of test list")
+        sys.exit(0)
 
     # -f option
     # clears the working_dir
@@ -87,11 +87,9 @@ def run_exerciser(args: argparse.Namespace):
         print("Flushing entire working directory")
         for item in working_dir.iterdir():
             shutil.rmtree(item)
-
     # -d option
-    # clears all timestamp_dirs in working_dir older than the date provided
-    # will exit with an err if the date is not provided in the requested format
-    if (not args.flush_by_date == None) and (not args.flush_all):
+    # clears the working_dir by the provided date
+    elif args.flush_by_date is not None:
         print("Flushing working directory by date")
         format_date = parse_date(args.flush_by_date)
         for subdir in working_dir.iterdir():
@@ -117,15 +115,11 @@ def parse_date(date_from_cla: str) -> str:
     num_hyphens = date_from_cla.count("-")
     if num_hyphens > 3 or (num_hyphens == 3 and "_" not in date_from_cla):
         print(
-            f"Error: Invalid date time '{date_from_cla}' provided. Check arg val for -d"
+            f"Error: Invalid date time '{date_from_cla}' provided from --flush-by-date"
         )
-        print("Exiting...")
         sys.exit(1)
 
-    # date format index
-    dfi = num_hyphens if num_hyphens == 3 else num_hyphens + 1
-
-    date_fmt = "-".join(DATETIME_FORMAT_OPTS["date"][:dfi])
+    date_fmt = "-".join(DATETIME_FORMAT_OPTS["date"][: min(num_hyphens + 1, 3)])
     date_fmt += (
         "_" + "-".join(DATETIME_FORMAT_OPTS["time"][: num_hyphens - 1])
         if "_" in date_from_cla
@@ -136,9 +130,8 @@ def parse_date(date_from_cla: str) -> str:
         format_date = datetime.strptime(date_from_cla, date_fmt)
     except ValueError:
         print(
-            f"Error: Invalid date time '{date_from_cla}' provided. Check arg val for -d"
+            f"Error: Invalid date time '{date_from_cla}' provided from --flush-by-date"
         )
-        print("Exiting...")
         sys.exit(1)
 
     return format_date
@@ -166,7 +159,6 @@ def execute_tests(tests_dir: Path, working_dir: Path, test_list: list):
     else:
         # need to wait 1 min to allow for unique dir names
         print("Error: Please wait at least 1 minute between succesive runs")
-        print("Exiting...")
         sys.exit(1)
 
     for test in iter_tests(tests_dir, test_list):
@@ -205,8 +197,9 @@ def iter_tests(tests_dir: Path, test_list: list):
             if os.path.exists(test_path):
                 yield Path(test_path)
             else:
-                print(f'Error: Invalid test "{test}", check arg val')
-                print("Continuing with remaining tests...")
+                print(
+                    f'Warning: Specified test "{test}" not found. Continuing with other tests'
+                )
 
 
 def create_test_execute_dir(timestamp_dir: Path, test_dir: Path) -> tuple:
@@ -232,7 +225,6 @@ def create_test_execute_dir(timestamp_dir: Path, test_dir: Path) -> tuple:
                     print(
                         f'Error: There can only be one .sub file in the test dir "{test_dir}"'
                     )
-                    print("Exiting...")
                     sys.exit(1)
             else:
                 shutil.copy(item, execute_dir)
@@ -247,13 +239,11 @@ def create_test_execute_dir(timestamp_dir: Path, test_dir: Path) -> tuple:
                 'Error: Test directory "{test_dir}" must contain only files, '
                 + "directories and symlinks"
             )
-            print("Exiting...")
             sys.exit(1)
 
     if not sub_file_found:
         print(f'Error: There must be one .sub file in the test dir "{test_dir}"')
-        print("Exiting...")
-        exit(1)
+        sys.exit(1)
 
     return (execute_dir, sub_file)
 
@@ -269,38 +259,32 @@ def generate_sub_object(sub_file: Path, test_name: str) -> htcondor2.Submit:
         job = htcondor2.Submit(f.read())
     if job is None:
         print(f"Error: Invalid submit file for test {test_name}")
-        print("Exiting...")
-        exit(1)
+        sys.exit(1)
 
     # add requirement to land on target ResourceName
+    req_expr = 'TARGET.GLIDEIN_ResourceName == "$(ResourceName)"'
     req = job.get("Requirements")
     if req is None:
-        job["Requirements"] = f'TARGET.GLIDEIN_ResourceName == "$(ResourceName)"'
+        job["Requirements"] = req_expr
     else:
-        job["Requirements"] = (
-            f'(TARGET.GLIDEIN_ResourceName == "$(ResourceName)") && ({req})'
-        )
+        job["Requirements"] = req_expr + f" && ({req})"
 
     # add periodic removal statement
     # job should be removed if it is in idle or running for more than 4 hours, if it ever
     # goes on hold, or if it restarts more than 10 times
     sec_in_4hr = 60 * 60 * 4
+    prdc_rm_expr = (
+        f"(JobStatus == 1 && CurrentTime-EnteredCurrentStatus > {sec_in_4hr}) || "
+        + f"(JobStatus == 2 && CurrentTime-EnteredCurrentStatus > {sec_in_4hr}) || "
+        + "(JobStatus == 5) || "
+        + "(NumShadowStarts > 10)"
+    )
     prdc_rm = job.get("periodic_remove")
     if prdc_rm is None:
-        job["periodic_remove"] = (
-            f"(JobStatus == 1 && CurrentTime-EnteredCurrentStatus > {sec_in_4hr}) || "
-            + f"(JobStatus == 2 && CurrentTime-EnteredCurrentStatus > {sec_in_4hr}) || "
-            + "(JobStatus == 5) || "
-            + "(NumShadowStarts > 10)"
-        )
+        job["periodic_remove"] = prdc_rm_expr
     else:
-        job["periodic_remove"] = (
-            f"(JobStatus == 1 && CurrentTime-EnteredCurrentStatus > {sec_in_4hr}) || "
-            + f"(JobStatus == 2 && CurrentTime-EnteredCurrentStatus > {sec_in_4hr}) || "
-            + "(JobStatus == 5) || "
-            + "(NumShadowStarts > 10) || "
-            + f"({prdc_rm})"
-        )
+        job["periodic_remove"] = prdc_rm_expr + f" || ({prdc_rm})"
+        
 
     # pool exerciser identifier attributes
     job["My.is_pool_exerciser"] = "true"

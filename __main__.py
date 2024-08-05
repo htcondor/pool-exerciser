@@ -90,11 +90,24 @@ def parse_cla() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def process_cla(args: argparse.Namespace):
+    """
+    Usage: verification and processing of args returned by parse_cla()
+    @param args: argparse.Namespace object returned by parse_cla()
+    """
+    if args.snapshot and args.print_tests:
+        print("Error: Cannot select both --snapshot and --print-tests options at the same time")
+        sys.exit(1)
+
+    test_list = args.tests
+
+
 def main():
     """
     Usage: run the thing
     """
     args = parse_cla()
+    process_cla(args)
     general.run_exerciser(args)
 
 

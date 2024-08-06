@@ -99,6 +99,16 @@ def process_cla(args: argparse.Namespace):
         print("Error: Cannot select both --snapshot and --print-tests options at the same time")
         sys.exit(1)
 
+    # process tests arg
+    # split the list around commas and remove duplicates
+    for item in args.tests:
+        if "," in item:
+            args.tests.extend(item.split(","))
+            args.tests.remove(item)
+    args.tests = list(set(args.tests))
+    if "" in args.tests:
+        args.tests.remove("")
+
 
 def main():
     """

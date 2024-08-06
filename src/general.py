@@ -264,10 +264,7 @@ def generate_sub_object(sub_file: Path, test_name: str) -> htcondor2.Submit:
     # add requirement to land on target ResourceName
     req_expr = 'TARGET.GLIDEIN_ResourceName == "$(ResourceName)"'
     req = job.get("Requirements")
-    if req is None:
-        job["Requirements"] = req_expr
-    else:
-        job["Requirements"] = req_expr + f" && ({req})"
+    job["Requirements"] = req_expr if req is None else req_expr + f" && ({req})"
 
     # add periodic removal statement
     # job should be removed if it is in idle or running for more than 4 hours, if it ever
@@ -280,11 +277,7 @@ def generate_sub_object(sub_file: Path, test_name: str) -> htcondor2.Submit:
         + "(NumShadowStarts > 10)"
     )
     prdc_rm = job.get("periodic_remove")
-    if prdc_rm is None:
-        job["periodic_remove"] = prdc_rm_expr
-    else:
-        job["periodic_remove"] = prdc_rm_expr + f" || ({prdc_rm})"
-        
+    job["periodic_remove"] = prdc_rm_expr if prdc_rm is None else prdc_rm_expr + f" || ({prdc_rm})"   
 
     # pool exerciser identifier attributes
     job["My.is_pool_exerciser"] = "true"

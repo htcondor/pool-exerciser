@@ -99,8 +99,6 @@ def process_cla(args: argparse.Namespace):
         print("Error: Cannot select both --snapshot and --print-tests options at the same time")
         sys.exit(1)
 
-    test_list = args.tests
-
 
 def main():
     """

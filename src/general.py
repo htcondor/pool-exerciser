@@ -163,12 +163,13 @@ def execute_tests(tests_dir: Path, working_dir: Path, test_list: list):
 
     for test in iter_tests(tests_dir, test_list):
         execute_dir, sub_file = create_test_execute_dir(timestamp_dir, test)
+        abs_timestamp_dir = os.path.abspath(timestamp_dir)
 
         root_dir = os.getcwd()
         schedd = htcondor2.Schedd()
 
         os.chdir(execute_dir)
-        job = generate_sub_object(sub_file, test.name)
+        job = generate_sub_object(sub_file, test.name, abs_timestamp_dir)
         item_data = [
             {"ResourceName": resource, "uniq_output_dir": f"results/{resource}"}
             for resource in resources.keys()
@@ -248,11 +249,12 @@ def create_test_execute_dir(timestamp_dir: Path, test_dir: Path) -> tuple:
     return (execute_dir, sub_file)
 
 
-def generate_sub_object(sub_file: Path, test_name: str) -> htcondor2.Submit:
+def generate_sub_object(sub_file: Path, test_name: str, timestamp_dir: str) -> htcondor2.Submit:
     """
     Usage: create an htcondor Submit object based on sub_file targetted to resource
     @param sub_file: general submit file to parse through to create Submit object
-    @param test_name: name of the test as it appears in the Pool_Exerciser/tests/ dir
+    @param test_name: name of the test as it appears in the tests dir
+    @param timestamp_dir: str rep of absolute path to top level dir of each exerciser execution
     """
     job = None
     with open(sub_file, "r") as f:
@@ -279,7 +281,16 @@ def generate_sub_object(sub_file: Path, test_name: str) -> htcondor2.Submit:
     prdc_rm = job.get("periodic_remove")
     job["periodic_remove"] = prdc_rm_expr if prdc_rm is None else prdc_rm_expr + f" || ({prdc_rm})"   
 
-    # pool exerciser identifier attributes
+    # create shared log for each exerciser run to be used by monitor prog
+    job["dagman_log"] = os.path.join(timestamp_dir, "shared_exerciser.log")
+
+    # create submit notes to identify job by the testname and expected resource
+    job["submit_event_notes"] = f"exerciser_info:{test_name},$(ResourceName)"
+
+    # add execute attributes
+    job["ulog_execute_attrs"] = "GLIDEIN_ResourceName"
+
+    # add pool exerciser identifier attributes
     job["My.is_pool_exerciser"] = "true"
     job["My.pool_exerciser_test"] = test_name
 

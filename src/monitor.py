@@ -10,35 +10,93 @@ import sys
 from pathlib import Path
 import os
 from datetime import datetime
+import argparse
 
 
-#TODO: argparsing
-# verbosity, working dir, test
+def parse_cla() -> argparse.Namespace:
+    """
+    Usage: command line argument parser
+    @return: parsed arguments in argparse.Namespace object
+    """
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "-v",
+        "--verbosity",
+        action="count",
+        dest="verbosity",
+        default=0,
+        help="Increases the verbosity of print stmts with each included -v"
+    )
+
+    parser.add_argument(
+        "-w",
+        "--working-dir",
+        metavar="directory_path",
+        dest="working_dir",
+        help="Specify a specific working directory for the monitor to examine.",
+    )
+
+    parser.add_argument(
+        "-t",
+        "--timestamp",
+        metavar="YYYY-MM-DD_hh-mm",
+        dest="timestamp",
+        help="Specify the timestamp of an exerciser run to target with the monitor. Must include "
+        + "entire YYYY-MM-DD_hh-mm string."
+    )
+
+    return parser.parse_args()
+
+
 def main():
-    working_dir = Path("/home/rboone3/Pool_Exerciser/working")
+    """
+    Usage: monitor the status of a specified exerciser run
+    """
+    args = parse_cla()
+
+    # -w option
+    # changes location of working_dir, exiting if the dir dne
+    if args.working_dir is None:
+        working_dir = Path("../working")
+    else:
+        working_dir = Path(args.working_dir)
+        if not os.path.exists(working_dir):
+            print(f"Error: Specified working directory {working_dir} does not exist")
+            sys.exit(1)
 
     if not os.path.exists(working_dir):
-        print("Error: Couldn't find working dir")
+        print("Error: Couldn't find working dir. Ensure you are in src dir")
         sys.exit(1)
 
     if len(os.listdir(working_dir)) == 0:
-        print("Error: Working directory is empty")
-        sys.exit(1)
+        print("Working directory is empty, nothing to monitor")
+        sys.exit(0)
 
-    target_dir = None
-    for current_dir in working_dir.iterdir():
-        if target_dir is None:
-            target_dir = current_dir
-        elif target_dir.name < current_dir.name:
-            target_dir = current_dir
+    # -t option
+    # specifies exerciser run to analyze. if no timestamp is provided, analyzes most recent run
+    if args.timestamp is None:
+        target_dir = None
+        for current_dir in working_dir.iterdir():
+            if target_dir is None:
+                target_dir = current_dir
+            elif target_dir.name < current_dir.name:
+                target_dir = current_dir
+    else:
+        target_dir = os.path.join(working_dir, args.timestamp)
+        if not os.path.exists(target_dir):
+            print(f"Error: Specified timestamp {args.timestamp} does not exist")
+            sys.exit(1)
+        target_dir = Path(target_dir)
 
-    status(target_dir)
+    status(target_dir, args.verbosity)
 
 
-def status(timestamp_dir: Path):
+def status(timestamp_dir: Path, verbosity: int):
     """
     Usage: observe the shared log for an exerciser test run and print status information
     @param timestamp_dir: Path object to the root dir of an exerciser run
+    @param verbosity: int specifying how verbose the print stmts should be
     """
     shared_log = os.path.join(timestamp_dir, "shared_exerciser.log")
     if not os.path.exists(shared_log):
@@ -143,7 +201,8 @@ def status(timestamp_dir: Path):
                 expected_tests[testname]["aborted_resources"].append(resource)
             else:
                 unknown_tests[testname]["aborted_resources"].append(resource)
-    print_status(expected_tests, unknown_tests, 0)
+
+    print_status(expected_tests, unknown_tests, verbosity)
 
 
 def print_status(expected_tests: dict, unknown_tests: dict, verbosity: int):
@@ -163,25 +222,20 @@ def print_status(expected_tests: dict, unknown_tests: dict, verbosity: int):
             num_failed_jobs = len(expected_tests[test]["failed_resources"])
             num_aborted_jobs = len(expected_tests[test]["aborted_resources"])
 
-            if verbosity == 0:
+            print(
+                f"{test} test: "
+                + f"{num_submitted_jobs} jobs submitted, "
+                + f"{num_succeeded_jobs} jobs passed, "
+                + f"{num_failed_jobs} jobs failed, "
+                + f"{num_aborted_jobs} system failures"
+            )
+            if verbosity > 0:
                 print(
-                    f"{test} test: "
-                    + f"{num_submitted_jobs} jobs submitted, "
-                    + f"{num_succeeded_jobs} jobs passed, "
-                    + f"{num_failed_jobs} jobs failed, "
-                    + f"{num_aborted_jobs} system failures"
-                )
-            else:
-                print(f"For test {test}:")
-                print(f"\t{num_submitted_jobs} resources submitted to")
-                print(f"\t{num_executed_jobs} resources began execution")
-                print(f"\t{num_succeeded_jobs} resources passed the test")
-                print(
-                    f"\t{num_failed_jobs} resources failed the test. List of failed resources:"
+                    f"\t{num_failed_jobs} jobs failed the test. List of failed job resources:"
                 )
                 for resource in expected_tests[test]["failed_resources"]:
                     print(f"\t\t{resource}")
-                print(f"\t{num_aborted_jobs} resources aborted. List of aborted resources:")
+                print(f"\t{num_aborted_jobs} system failures. List of sys fail resources:")
                 for resource in expected_tests[test]["aborted_resources"]:
                     print(f"\t\t{resource}")
 
@@ -194,26 +248,21 @@ def print_status(expected_tests: dict, unknown_tests: dict, verbosity: int):
             num_succeeded_jobs = len(unknown_tests[test]["succeeded_resources"])
             num_failed_jobs = len(unknown_tests[test]["failed_resources"])
             num_aborted_jobs = len(unknown_tests[test]["aborted_resources"])
-
-            if verbosity == 0:
+            
+            print(
+                f"{test} test: "
+                + f"{num_submitted_jobs} jobs submitted, "
+                + f"{num_succeeded_jobs} jobs passed, "
+                + f"{num_failed_jobs} jobs failed, "
+                + f"{num_aborted_jobs} system failures"
+            )
+            if verbosity > 0:
                 print(
-                    f"{test} test: "
-                    + f"{num_submitted_jobs} jobs submitted, "
-                    + f"{num_succeeded_jobs} jobs passed, "
-                    + f"{num_failed_jobs} jobs failed, "
-                    + f"{num_aborted_jobs} system failures"
-                )
-            else:
-                print(f"For test {test}:")
-                print(f"\t{num_submitted_jobs} resources submitted to")
-                print(f"\t{num_executed_jobs} resources began execution")
-                print(f"\t{num_succeeded_jobs} resources passed the test")
-                print(
-                    f"\t{num_failed_jobs} resources failed the test. List of failed resources:"
+                    f"\t{num_failed_jobs} jobs failed the test. List of failed job resources:"
                 )
                 for resource in unknown_tests[test]["failed_resources"]:
                     print(f"\t\t{resource}")
-                print(f"\t{num_aborted_jobs} resources aborted. List of aborted resources:")
+                print(f"\t{num_aborted_jobs} system failures. List of sys fail resources:")
                 for resource in unknown_tests[test]["aborted_resources"]:
                     print(f"\t\t{resource}")
 

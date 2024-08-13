@@ -44,7 +44,7 @@ def run_exerciser(args: argparse.Namespace):
     """
     # -w option
     # changes location of working_dir, exiting if the dir dne
-    if args.working_dir == None:
+    if args.working_dir is None:
         working_dir = Path("working")
     else:
         working_dir = Path(args.working_dir)
@@ -54,7 +54,7 @@ def run_exerciser(args: argparse.Namespace):
 
     # -t option
     # changes location of tests_dir, exiting if the dir dne
-    if args.test_dir == None:
+    if args.test_dir is None:
         tests_dir = Path("tests")
     else:
         tests_dir = Path(args.test_dir)

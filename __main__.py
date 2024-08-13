@@ -52,7 +52,7 @@ def parse_cla() -> argparse.Namespace:
         "--print-tests",
         action="store_true",
         dest="print_tests",
-        help="prints the list of all available tests found in the specified test directory.",
+        help="Prints the list of all available tests found in the specified test directory.",
     )
 
     parser.add_argument(
@@ -60,7 +60,7 @@ def parse_cla() -> argparse.Namespace:
         "--snapshot",
         action="store_true",
         dest="snapshot",
-        help="prints a list of all currently available resources in the pool.",
+        help="Prints a list of all currently available resources in the pool.",
     )
 
     parser.add_argument(

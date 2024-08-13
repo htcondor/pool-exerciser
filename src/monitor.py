@@ -12,6 +12,8 @@ import os
 from datetime import datetime
 
 
+#TODO: argparsing
+# verbosity, working dir, test
 def main():
     working_dir = Path("/home/rboone3/Pool_Exerciser/working")
 
@@ -50,15 +52,16 @@ def status(timestamp_dir: Path):
     print(f"Current time is: {curr_time}")
 
     # 2 dicts to store info on the status of the exerciser run
-    # 1 for expected tests (appear in working dir)
-    # 1 for unkown tests (don't appear in working dir, but do appear in shared log)
+    # 1 for expected tests (appears in working dir)
+    # 1 for unkown tests (doesn't appear in working dir, but does appear in shared log)
     # both are dicts of dicts. each subdict stores info for a single test
     # subdict fields are: submitted_resources, executed_resources,
     # succeeded_resources, failed_resources, aborted_resources
     expected_tests = {}
     unknown_tests = {}
     for item in timestamp_dir.iterdir():
-        if (item.name != "resource_list.txt") and (item.name != "shared_exerciser.log"):
+        # every dir represents a test
+        if item.is_dir():
             test_dict = {
                 "submitted_resources": [],
                 "executed_resources": [],
@@ -68,18 +71,18 @@ def status(timestamp_dir: Path):
             }
             expected_tests[item.name] = test_dict
 
-    # clusters dict to store mapping of event cluster to testname, "known" status, and list of
-    # procs and their associated resources
+    # clusters dict to store mapping of event cluster to test and associated procs
     clusters = {}
     event_log = JobEventLog(shared_log)
     # loop through all events in shared event log, and filter for submit, execute, termination,
     # and abortion events
     for event in event_log.events(0):
-        event_str = str(event)
+        # submit event: add test info to related dicts
         if event.type is JobEventType.SUBMIT:
-            note_pos = event_str.rfind(":")
-            if note_pos != -1:
-                testname, resource = event_str[note_pos + 1 : -1].split(",")
+            log_notes = event["LogNotes"]
+            colon_pos = log_notes.find(":")
+            if colon_pos != -1:
+                testname, resource = log_notes[colon_pos + 1 :].split(",")
                 if testname in expected_tests.keys():
                     expected_tests[testname]["submitted_resources"].append(resource)
                     # add info to clusters to utilize for future execute, term, and abort events
@@ -101,6 +104,10 @@ def status(timestamp_dir: Path):
                         }
                     else:
                         clusters[event.cluster]["procs"][event.proc] = resource
+            else:
+                print("Error: Non-exerciser test found")
+                sys.exit(1)
+        # execute event: update executed_resources field in test subdict
         elif event.type is JobEventType.EXECUTE:
             testname = clusters[event.cluster]["testname"]
             resource = clusters[event.cluster]["procs"][event.proc]
@@ -110,12 +117,13 @@ def status(timestamp_dir: Path):
                 expected_tests[testname]["executed_resources"].append(resource)
             else:
                 unknown_tests[testname]["executed_resources"].append(resource)
+        # termination event: determine test success or failure, then update related field
         elif event.type is JobEventType.JOB_TERMINATED:
             testname = clusters[event.cluster]["testname"]
             resource = clusters[event.cluster]["procs"][event.proc]
             known = clusters[event.cluster]["known"]
 
-            if event_str.find("return value 0") != -1:
+            if event["ReturnValue"] == 0:
                 if known:
                     expected_tests[testname]["succeeded_resources"].append(resource)
                 else:
@@ -125,6 +133,7 @@ def status(timestamp_dir: Path):
                     expected_tests[testname]["failed_resources"].append(resource)
                 else:
                     unknown_tests[testname]["failed_resources"].append(resource)
+        # abort event: update aborted_resources field in test subdict
         elif event.type is JobEventType.JOB_ABORTED:
             testname = clusters[event.cluster]["testname"]
             resource = clusters[event.cluster]["procs"][event.proc]
@@ -144,40 +153,9 @@ def print_status(expected_tests: dict, unknown_tests: dict, verbosity: int):
     @param unknown_tests: dict of info on unknown tests (appeared in shared log but not working dir)
     @param verbosity: int specifying level of verbosity with which to print status info
     """
-    num_expected_tests = len(expected_tests)
-    num_unknown_tests = len(unknown_tests)
-    if verbosity == 0:
-        print(f"{num_expected_tests} expected tests run.")
-        for test in expected_tests.keys():
-            num_submitted_jobs = len(expected_tests[test]["submitted_resources"])
-            num_succeeded_jobs = len(expected_tests[test]["succeeded_resources"])
-            num_failed_jobs = len(expected_tests[test]["failed_resources"])
-            num_aborted_jobs = len(expected_tests[test]["aborted_resources"])
-
-            print(
-                f"{test} test: "
-                + f"{num_submitted_jobs} jobs submitted, "
-                + f"{num_succeeded_jobs} jobs passed, "
-                + f"{num_failed_jobs} jobs failed, "
-                + f"{num_aborted_jobs} system failures"
-            )
-
-        print(f"{num_unknown_tests} unknown tests run.")
-        for test in unknown_tests.keys():
-            num_submitted_jobs = len(unknown_tests[test]["submitted_resources"])
-            num_succeeded_jobs = len(unknown_tests[test]["succeeded_resources"])
-            num_failed_jobs = len(unknown_tests[test]["failed_resources"])
-            num_aborted_jobs = len(unknown_tests[test]["aborted_resources"])
-
-            print(
-                f"{test} test: "
-                + f"{num_submitted_jobs} jobs submitted, "
-                + f"{num_succeeded_jobs} jobs passed, "
-                + f"{num_failed_jobs} jobs failed, "
-                + f"{num_aborted_jobs} system failures"
-            )
-    elif verbosity == 1:
-        print(f"{num_expected_tests} expected tests run.")
+    # print expected tests
+    if len(expected_tests) > 0:
+        print(f"{len(expected_tests)} expected tests run.")
         for test in expected_tests.keys():
             num_submitted_jobs = len(expected_tests[test]["submitted_resources"])
             num_executed_jobs = len(expected_tests[test]["executed_resources"])
@@ -185,20 +163,31 @@ def print_status(expected_tests: dict, unknown_tests: dict, verbosity: int):
             num_failed_jobs = len(expected_tests[test]["failed_resources"])
             num_aborted_jobs = len(expected_tests[test]["aborted_resources"])
 
-            print(f"For test {test}:")
-            print(f"\t{num_submitted_jobs} resources submitted to")
-            print(f"\t{num_executed_jobs} resources began execution")
-            print(f"\t{num_succeeded_jobs} resources passed the test")
-            print(
-                f"\t{num_failed_jobs} resources failed the test. List of failed resources:"
-            )
-            for resource in expected_tests[test]["failed_resources"]:
-                print(f"\t\t{resource}")
-            print(f"\t{num_aborted_jobs} resources aborted. List of aborted resources:")
-            for resource in expected_tests[test]["aborted_resources"]:
-                print(f"\t\t{resource}")
+            if verbosity == 0:
+                print(
+                    f"{test} test: "
+                    + f"{num_submitted_jobs} jobs submitted, "
+                    + f"{num_succeeded_jobs} jobs passed, "
+                    + f"{num_failed_jobs} jobs failed, "
+                    + f"{num_aborted_jobs} system failures"
+                )
+            else:
+                print(f"For test {test}:")
+                print(f"\t{num_submitted_jobs} resources submitted to")
+                print(f"\t{num_executed_jobs} resources began execution")
+                print(f"\t{num_succeeded_jobs} resources passed the test")
+                print(
+                    f"\t{num_failed_jobs} resources failed the test. List of failed resources:"
+                )
+                for resource in expected_tests[test]["failed_resources"]:
+                    print(f"\t\t{resource}")
+                print(f"\t{num_aborted_jobs} resources aborted. List of aborted resources:")
+                for resource in expected_tests[test]["aborted_resources"]:
+                    print(f"\t\t{resource}")
 
-        print(f"{num_unknown_tests} unknown tests run.")
+    # print unknown tests
+    if len(unknown_tests) > 0:
+        print(f"{len(unknown_tests)} unknown tests run.")
         for test in unknown_tests.keys():
             num_submitted_jobs = len(unknown_tests[test]["submitted_resources"])
             num_executed_jobs = len(unknown_tests[test]["executed_resources"])
@@ -206,18 +195,27 @@ def print_status(expected_tests: dict, unknown_tests: dict, verbosity: int):
             num_failed_jobs = len(unknown_tests[test]["failed_resources"])
             num_aborted_jobs = len(unknown_tests[test]["aborted_resources"])
 
-            print(f"For test {test}:")
-            print(f"\t{num_submitted_jobs} resources submitted to")
-            print(f"\t{num_executed_jobs} resources began execution")
-            print(f"\t{num_succeeded_jobs} resources passed the test")
-            print(
-                f"\t{num_failed_jobs} resources failed the test. List of failed resources:"
-            )
-            for resource in unknown_tests[test]["failed_resources"]:
-                print(f"\t\t{resource}")
-            print(f"\t{num_aborted_jobs} resources aborted. List of aborted resources:")
-            for resource in unknown_tests[test]["aborted_resources"]:
-                print(f"\t\t{resource}")
+            if verbosity == 0:
+                print(
+                    f"{test} test: "
+                    + f"{num_submitted_jobs} jobs submitted, "
+                    + f"{num_succeeded_jobs} jobs passed, "
+                    + f"{num_failed_jobs} jobs failed, "
+                    + f"{num_aborted_jobs} system failures"
+                )
+            else:
+                print(f"For test {test}:")
+                print(f"\t{num_submitted_jobs} resources submitted to")
+                print(f"\t{num_executed_jobs} resources began execution")
+                print(f"\t{num_succeeded_jobs} resources passed the test")
+                print(
+                    f"\t{num_failed_jobs} resources failed the test. List of failed resources:"
+                )
+                for resource in unknown_tests[test]["failed_resources"]:
+                    print(f"\t\t{resource}")
+                print(f"\t{num_aborted_jobs} resources aborted. List of aborted resources:")
+                for resource in unknown_tests[test]["aborted_resources"]:
+                    print(f"\t\t{resource}")
 
 
 if __name__ == "__main__":

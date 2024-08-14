@@ -66,7 +66,7 @@ def main():
             sys.exit(1)
 
     if not os.path.exists(working_dir):
-        print("Error: Couldn't find working dir. Ensure you are in src dir")
+        print("Error: Couldn't find working dir. Ensure you are in source directory")
         sys.exit(1)
 
     if len(os.listdir(working_dir)) == 0:
@@ -85,7 +85,7 @@ def main():
     else:
         target_dir = os.path.join(working_dir, args.timestamp)
         if not os.path.exists(target_dir):
-            print(f"Error: Specified timestamp {args.timestamp} does not exist")
+            print(f"Error: Specified exerciser execution directory {args.timestamp} does not exist")
             sys.exit(1)
         target_dir = Path(target_dir)
 
@@ -138,32 +138,26 @@ def status(timestamp_dir: Path, verbosity: int):
         # submit event: add test info to related dicts
         if event.type is JobEventType.SUBMIT:
             log_notes = event["LogNotes"]
-            colon_pos = log_notes.find(":")
-            if colon_pos != -1:
-                testname, resource = log_notes[colon_pos + 1 :].split(",")
+            if ":" in log_notes:
+                testname, resource = log_notes.split(":")[1].split(",")
+
+                # add info to clusters to utilize for future execute, term, and abort events
+                if event.cluster not in clusters:
+                    clusters[event.cluster] = {
+                        "testname": testname,
+                        "known": True,
+                        "procs": {event.proc: resource},
+                    }
+                else:
+                    clusters[event.cluster]["procs"][event.proc] = resource
+
                 if testname in expected_tests.keys():
                     expected_tests[testname]["submitted_resources"].append(resource)
-                    # add info to clusters to utilize for future execute, term, and abort events
-                    if event.cluster not in clusters:
-                        clusters[event.cluster] = {
-                            "testname": testname,
-                            "known": True,
-                            "procs": {event.proc: resource},
-                        }
-                    else:
-                        clusters[event.cluster]["procs"][event.proc] = resource
                 else:
                     unknown_tests[testname]["submitted_resources"].append(resource)
-                    if event.cluster not in clusters:
-                        clusters[event.cluster] = {
-                            "testname": testname,
-                            "known": False,
-                            "procs": {event.proc: resource},
-                        }
-                    else:
-                        clusters[event.cluster]["procs"][event.proc] = resource
+                    clusters[event.cluster]["known"] = False
             else:
-                print("Error: Non-exerciser test found")
+                print("Error: Non-exerciser test found in shared log")
                 sys.exit(1)
         # execute event: update executed_resources field in test subdict
         elif event.type is JobEventType.EXECUTE:

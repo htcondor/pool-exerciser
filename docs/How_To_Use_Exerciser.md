@@ -2,7 +2,8 @@
 
 ## Running the Exerciser
 
-The Pool Exerciser can be run with no options by navigating to the root directory **Pool_Exerciser** and running the command:
+The Pool Exerciser can be run with no options by navigating to the root directory **Pool_Exerciser**
+and running the command:
 
 ```
 $ python __main__.py
@@ -20,7 +21,7 @@ included.
 
 - tests: positional argument. Takes a comma seperated list with the names of the tests you want
 to run on the exerciser. If no tests are specified, the exerciser will execute all the tests in the
-tests dir. Example:
+**tests** dir. Example:
 
 ```
 $ python __main__.py checksum
@@ -28,10 +29,11 @@ $ python __main__.py checksum
 ```
 
 - --flush-all, -f: optional argument. Clears out all the previous executions subdirectories from
-the working directory. If used with -w, it will clear out that working directory instead.
+the **working** directory. If used with -w, it will clear out that working directory instead.
 
 - --flush-by-date YYYY-MM-DD_hh-mm, -d YYYY-MM-DD_hh-mm: optional argument. Clears out execution
-subdirectories from the working directory older than the date/time specified. You can use any level
+subdirectories from the **working** directory older than the date/time specified. You can use any 
+level
 of specificity from just YYYY to YYYY-MM-DD_hh-mm. Like -f, if used with -w, it will clear out that
 working directory instead. Example:
 
@@ -46,7 +48,8 @@ $ python __main__.py -d 2024-08-01_12-30
 # clears all execution dirs older than 2024-08-01_12-30
 ```
 
-- --print-tests, -p: optional argument. Prints out all the available tests from the test directory
+- --print-tests, -p: optional argument. Prints out all the available tests from the **tests** 
+directory
 and then exits without running the exerciser. If used with -t, it will print out the tests in that
 test directory instead.
 

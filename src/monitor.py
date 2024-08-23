@@ -1,8 +1,24 @@
 #!/usr/bin/env python3
-# Author: Ryan Boone
+# Copyright 2024 HTCondor Team, Computer Sciences Department,
+# University of Wisconsin-Madison, WI.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
-Usage: run separately from exerciser to monitor the progress/outcomes of test runs
+Usage: secondary exerciser tool to monitor the progress/outcomes of test runs. can be run at any 
+    point after running the exerciser, and will print the current status
 """
+
+__author__ = 'Ryan James Boone <rboone3@wisc.edu>'
 
 from htcondor2 import JobEventLog
 from htcondor2 import JobEventType
@@ -219,6 +235,7 @@ def print_status(expected_tests: dict, unknown_tests: dict, verbosity: int):
             print(
                 f"{test} test: "
                 + f"{num_submitted_jobs} jobs submitted, "
+                + f"{num_executed_jobs} jobs began executing, "
                 + f"{num_succeeded_jobs} jobs passed, "
                 + f"{num_failed_jobs} jobs failed, "
                 + f"{num_aborted_jobs} system failures"
@@ -246,6 +263,7 @@ def print_status(expected_tests: dict, unknown_tests: dict, verbosity: int):
             print(
                 f"{test} test: "
                 + f"{num_submitted_jobs} jobs submitted, "
+                + f"{num_executed_jobs} jobs began executing, "
                 + f"{num_succeeded_jobs} jobs passed, "
                 + f"{num_failed_jobs} jobs failed, "
                 + f"{num_aborted_jobs} system failures"

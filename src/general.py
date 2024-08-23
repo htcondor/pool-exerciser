@@ -1,8 +1,23 @@
 #!/usr/bin/env python3
-# Author: Ryan Boone
+# Copyright 2024 HTCondor Team, Computer Sciences Department,
+# University of Wisconsin-Madison, WI.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
-Usage: functions used by exerciser operation
+Usage: bulk of the code for exerciser execution
 """
+
+__author__ = 'Ryan James Boone <rboone3@wisc.edu>'
 
 import htcondor2
 from pathlib import Path
@@ -28,6 +43,8 @@ def get_resources() -> dict:
 
     unique_resources = dict()
 
+    # eliminate repeat resources to produce a unique list
+    # using a dictionary to count number of occurrences, but this count is unused at the moment
     for resource in resources:
         if resource["GLIDEIN_ResourceName"] in unique_resources:
             unique_resources[resource["GLIDEIN_ResourceName"]] += 1
@@ -161,6 +178,12 @@ def execute_tests(tests_dir: Path, working_dir: Path, test_list: list):
         print("Error: Please wait at least 1 minute between succesive runs")
         sys.exit(1)
 
+    # where the magic happens!
+    # loop through every test returned by iter_tests, create execution dirs for them using
+    # create_test_execute_dir, prepare them with generate_sub_object, and then submit them to the
+    # OSPool!
+    # i.e. verify that the requested tests exist, make spaces for them to run, modify them into
+    # exerciser jobs, and send them to the pool
     for test in iter_tests(tests_dir, test_list):
         execute_dir, sub_file = create_test_execute_dir(timestamp_dir, test)
         abs_timestamp_dir = os.path.abspath(timestamp_dir)
@@ -210,18 +233,23 @@ def create_test_execute_dir(timestamp_dir: Path, test_dir: Path) -> tuple:
     @param test_dir: src dir to copy from
     @return: tuple which stores the execute dir, and submit file for the test
     """
+    # create execution dir for specified test
     execute_dir = os.path.join(timestamp_dir, test_dir.name)
     os.makedirs(execute_dir)
 
+    # look for the submit file in the test dir. each test must contain exactly 1
     sub_file_found = False
 
+    # copy files from test dir into execution dir. watch for .sub file
     for item in test_dir.iterdir():
-        # copy files, watching for a single .sub file which is required
         if item.is_file():
+            # .sub file found
             if item.name[-4:] == ".sub":
+                # first occurrence (good)
                 if not sub_file_found:
                     sub_file = Path(shutil.copy(item, execute_dir)).absolute()
                     sub_file_found = True
+                # second occurrence (bad)
                 else:
                     print(
                         f'Error: There can only be one .sub file in the test dir "{test_dir}"'
@@ -256,6 +284,7 @@ def generate_sub_object(sub_file: Path, test_name: str, timestamp_dir: str) -> h
     @param test_name: name of the test as it appears in the tests dir
     @param timestamp_dir: str rep of absolute path to top level dir of each exerciser execution
     """
+    # create submit object
     job = None
     with open(sub_file, "r") as f:
         job = htcondor2.Submit(f.read())

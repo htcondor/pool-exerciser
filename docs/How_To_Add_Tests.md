@@ -5,12 +5,13 @@ possible. If you have an HTCondor job, you can probably turn it into an Exercise
 run on the Exerciser function just like normal HTCondor jobs, with a few small tweaks. To ensure
 your test will work on the Exerciser, follow these practices:
 
-- Move the folder containing all your test data into the tests dir. This should contain the HTCondor
+- Move the folder containing all your test data into the **tests** dir. This should contain the 
+HTCondor
 submit file, any executable/s, and any other files necessary for proper test execution such as 
 input files. Note that the name of this folder will be the name of the test known to the exerciser.
-For example, inside the tests dir is the test "checksum" which contains all the data for that test.
-The exerciser will refer to that test as "checksum" and all other tests the same way, so name this
-folder what you want to name the test.
+For example, inside the **tests** dir is the subdir "checksum" which contains all the data for that 
+test. The exerciser will refer to that test as "checksum" and all other tests the same way, so name 
+this folder what you want to name the test.
 
 - Alternatively, you can specify a tests directory at runtime with the -t option. For more info on
 this option, read How_To_Use_Exerciser. The tests inside this directory should follow the same
@@ -26,7 +27,7 @@ run it.
 may be of use to you, but is mostly used by the exerciser to target a specific resource.
 
 2. $(uniq\_output\_dir) - Specifies a unique sub-directory of execution_dir/results/ResourceName 
-corresponding to the targeted resource of the job . This is useful for organizing any output files 
+corresponding to the targeted resource of the job. This is useful for organizing any output files 
 automatically. Note: These sub-directories are not created before submission so storing the user log
- within will not work. For an example on how to use this macro, you can inspect checksum.sub, which
+within will not work. For an example on how to use this macro, you can inspect checksum.sub, which
 you can find in tests/checksum.

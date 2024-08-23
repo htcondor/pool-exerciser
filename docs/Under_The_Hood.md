@@ -17,6 +17,9 @@ submits the test to the OSPool, with one job being sent to each resource in the 
 The jobs then run on their target resource, and output is returned to be interpreted by the monitor
 tool.
 
+## Diagram
+![Architecture Diagram](architecture.png "Exerciser Architecture")
+
 ## Abnormal Execution
 
 With the selection of certain command line options, the execution of the Exerciser may differ. 

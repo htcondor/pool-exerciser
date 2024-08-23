@@ -2,7 +2,8 @@
 
 ## Overview
 
-The Pool Exerciser has a monitor tool that can be used to analyze Exerciser runs. You can run the
+The Pool Exerciser has a secondary monitor tool that can be used to analyze Exerciser runs. You can 
+run the
 monitor by navigating to the **src** directory, and running the command:
 
 ```
@@ -14,6 +15,9 @@ When run with no options, the monitor will analyze the most recent Exerciser run
 submitted in that particular run. It notes events such as job submissions, executions, terminations
 via success or failure, and abortion due to periodic removal. It then prints a summary of all the
 tests in that run.
+
+The monitor will denote a test success as a zero (0) exit code, a test failure as a nonzero (!0)
+ exit code, and a system failure as some problem which prevented the test from running at all.
 
 ## Command Line Options
 

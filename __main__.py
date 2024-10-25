@@ -102,6 +102,17 @@ def parse_cla() -> argparse.Namespace:
         help="Disables execution of tests.",
     )
 
+    parser.add_argument(
+        "-r",
+        "--resource-sample-size",
+        metavar="size",
+        dest="resource_sample_size",
+        type=float,
+        default=0.05,
+        help="Specifies the percent of machines in each resource to send tests to. Argument value "
+        + "should be a float between 0.0 (exclusive) and 1.0 (inclusive).",
+    )
+
     return parser.parse_args()
 
 
@@ -112,6 +123,10 @@ def process_cla(args: argparse.Namespace):
     """
     if args.snapshot and args.print_tests:
         print("Error: Cannot select both --snapshot and --print-tests options at the same time")
+        sys.exit(1)
+
+    if (args.resource_sample_size <= 0.0) or (args.resource_sample_size > 1.0):
+        print("Error: Resource sample size must be between 0.0 (exclusive) and 1.0 (inclusive)")
         sys.exit(1)
 
     # process tests arg

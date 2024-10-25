@@ -26,6 +26,7 @@ import sys
 import shutil
 from datetime import datetime
 import argparse
+from math import ceil
 
 
 def get_resources() -> dict:
@@ -36,7 +37,7 @@ def get_resources() -> dict:
     """
     collector = htcondor2.Collector("cm-1.ospool.osg-htc.org")
     resources = collector.query(
-        ad_type=htcondor2.AdTypes.Startd,
+        ad_type=htcondor2.AdTypes.StartDaemon,
         constraint="!isUndefined(GLIDEIN_ResourceName)",
         projection=["GLIDEIN_ResourceName"],
     )
@@ -117,7 +118,7 @@ def run_exerciser(args: argparse.Namespace):
     # -b option
     # controls whether the excersier runs. set to True by default
     if args.run:
-        execute_tests(tests_dir, working_dir, args.tests)
+        execute_tests(tests_dir, working_dir, args.tests, args.resource_sample_size)
 
 
 def parse_date(date_from_cla: str) -> str:
@@ -154,11 +155,13 @@ def parse_date(date_from_cla: str) -> str:
     return format_date
 
 
-def execute_tests(tests_dir: Path, working_dir: Path, test_list: list):
+def execute_tests(tests_dir: Path, working_dir: Path, test_list: list, sample_percent: float):
     """
     Usage: builds working file system and submits tests
     @param tests_dir: directory containing all exerciser tests
     @param working_dir: directory for storing info on exerciser runs
+    @param test_list: list parsed from args of all the tests to run
+    @param sample_percent: percent of machines to send tests to in each resource
     """
     # create top level working dir for exerciser run
     curr_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
@@ -193,13 +196,25 @@ def execute_tests(tests_dir: Path, working_dir: Path, test_list: list):
 
         os.chdir(execute_dir)
         job = generate_sub_object(sub_file, test.name, abs_timestamp_dir)
+
         item_data = [
-            {"ResourceName": resource, "uniq_output_dir": f"results/{resource}"}
+            {"ResourceName": resource, "resource_dir": f"results/{resource}",
+              "sample_dir": f"results/{resource}", "SampleNumber": "0"}
             for resource in resources.keys()
         ]
 
+        sample_item_data = []
+        for item in item_data:
+            resource_size = resources[item["ResourceName"]]
+            sample_size = ceil(resource_size * sample_percent)
+            for i in range(sample_size):
+                sample_item = item.copy()
+                sample_item["sample_dir"] = sample_item["sample_dir"] + f"/sample_{i:03}"
+                sample_item["SampleNumber"] = str(i)
+                sample_item_data.append(sample_item)
+
         job.issue_credentials()
-        schedd.submit(job, itemdata=iter(item_data))
+        schedd.submit(job, itemdata=iter(sample_item_data))
         os.chdir(root_dir)
 
 
@@ -314,7 +329,7 @@ def generate_sub_object(sub_file: Path, test_name: str, timestamp_dir: str) -> h
     job["dagman_log"] = os.path.join(timestamp_dir, "shared_exerciser.log")
 
     # create submit notes to identify job by the testname and expected resource
-    job["submit_event_notes"] = f"exerciser_info:{test_name},$(ResourceName)"
+    job["submit_event_notes"] = f"exerciser_info:{test_name},$(ResourceName),$(SampleNumber)"
 
     # add execute attributes
     job["ulog_execute_attrs"] = "GLIDEIN_ResourceName"
@@ -322,5 +337,6 @@ def generate_sub_object(sub_file: Path, test_name: str, timestamp_dir: str) -> h
     # add pool exerciser identifier attributes
     job["My.is_pool_exerciser"] = "true"
     job["My.pool_exerciser_test"] = test_name
+    job["My.resource_sample_num"] = "$(SampleNumber)"
 
     return job

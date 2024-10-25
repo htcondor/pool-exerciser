@@ -26,6 +26,7 @@ run it.
 1. $(ResourceName) - This will be replaced with the target GLIDEIN_ResourceName for each job. This
 may be of use to you, but is mostly used by the exerciser to target a specific resource.
 
+# TODO: update this
 2. $(uniq\_output\_dir) - Specifies a unique sub-directory of execution_dir/results/ResourceName 
 corresponding to the targeted resource of the job. This is useful for organizing any output files 
 automatically. Note: These sub-directories are not created before submission so storing the user log

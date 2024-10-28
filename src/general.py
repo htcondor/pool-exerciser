@@ -197,24 +197,21 @@ def execute_tests(tests_dir: Path, working_dir: Path, test_list: list, sample_pe
         os.chdir(execute_dir)
         job = generate_sub_object(sub_file, test.name, abs_timestamp_dir)
 
-        item_data = [
-            {"ResourceName": resource, "resource_dir": f"results/{resource}",
-              "sample_dir": f"results/{resource}", "SampleNumber": "0"}
-            for resource in resources.keys()
-        ]
-
-        sample_item_data = []
-        for item in item_data:
-            resource_size = resources[item["ResourceName"]]
+        item_data = []
+        for resource in resources.keys():
+            resource_size = resources[resource]
             sample_size = ceil(resource_size * sample_percent)
             for i in range(sample_size):
-                sample_item = item.copy()
-                sample_item["sample_dir"] = sample_item["sample_dir"] + f"/sample_{i:03}"
-                sample_item["SampleNumber"] = str(i)
-                sample_item_data.append(sample_item)
+                item = {
+                    "ResourceName": resource,
+                    "resource_dir": f"results/{resource}",
+                    "sample_dir": f"results/{resource}/sample_{i:03}",
+                    "SampleNumber": str(i)
+                }
+                item_data.append(item)
 
         job.issue_credentials()
-        schedd.submit(job, itemdata=iter(sample_item_data))
+        schedd.submit(job, itemdata=iter(item_data))
         os.chdir(root_dir)
 
 
@@ -307,6 +304,8 @@ def generate_sub_object(sub_file: Path, test_name: str, timestamp_dir: str) -> h
         print(f"Error: Invalid submit file for test {test_name}")
         sys.exit(1)
 
+    job.setSubmitMethod(99, True)
+
     # add requirement to land on target ResourceName
     req_expr = 'TARGET.GLIDEIN_ResourceName == "$(ResourceName)"'
     req = job.get("Requirements")
@@ -335,8 +334,8 @@ def generate_sub_object(sub_file: Path, test_name: str, timestamp_dir: str) -> h
     job["ulog_execute_attrs"] = "GLIDEIN_ResourceName"
 
     # add pool exerciser identifier attributes
-    job["My.is_pool_exerciser"] = "true"
-    job["My.pool_exerciser_test"] = test_name
-    job["My.resource_sample_num"] = "$(SampleNumber)"
+    job["My.EXERCISER_Job"] = "true"
+    job["My.EXERCISER_TestName"] = test_name
+    job["My.EXERCISER_SampleNum"] = "$(SampleNumber)"
 
     return job

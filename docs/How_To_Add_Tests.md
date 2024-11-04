@@ -26,9 +26,12 @@ run it.
 1. $(ResourceName) - This will be replaced with the target GLIDEIN_ResourceName for each job. This
 may be of use to you, but is mostly used by the exerciser to target a specific resource.
 
-# TODO: update this
-2. $(uniq\_output\_dir) - Specifies a unique sub-directory of execution_dir/results/ResourceName 
+2. $(resource\_dir) - Specifies a unique sub-directory: execution_dir/results/ResourceName, 
 corresponding to the targeted resource of the job. This is useful for organizing any output files 
 automatically. Note: These sub-directories are not created before submission so storing the user log
-within will not work. For an example on how to use this macro, you can inspect checksum.sub, which
-you can find in tests/checksum.
+within will not work.
+
+3. $(sample\_dir) - Further specifies directory hierarchy beyond resource\_dir. When a test is
+submitted to the pool, it will send a certain number of identical "sample tests" to each resource.
+This macro will expand to: execution_dir/results/ResourceName/sample_XXX, where XXX is the sample
+number for that unique instance of the test.

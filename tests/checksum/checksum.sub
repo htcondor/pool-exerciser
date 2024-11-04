@@ -1,8 +1,8 @@
 executable = checksum.exe
 arguments = input.h5 input.checksum
 
-output = $(uniq_output_dir)/checksum.out
-error = $(uniq_output_dir)/checksum.err
+output = $(sample_dir)/checksum.out
+error = $(sample_dir)/checksum.err
 log = checksum.log
 
 request_cpus = 1

@@ -155,7 +155,7 @@ def status(timestamp_dir: Path, verbosity: int):
         if event.type is JobEventType.SUBMIT:
             log_notes = event["LogNotes"]
             if ":" in log_notes:
-                testname, resource = log_notes.split(":")[1].split(",")
+                testname, resource, sample_num = log_notes.split(":")[1].split(",")
 
                 # add info to clusters to utilize for future execute, term, and abort events
                 if event.cluster not in clusters:

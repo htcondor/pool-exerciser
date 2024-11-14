@@ -12,6 +12,4 @@ request_cpus = 1
 request_memory = 1GB
 request_disk = 1GB
 
-should_transfer_files = no
-
 queue

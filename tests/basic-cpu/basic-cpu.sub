@@ -1,0 +1,15 @@
+# Simple submit file for testing the pool exerciser on the CHTC
+
+executable = /bin/hostname
+transfer_executable = False
+arguments = -f
+
+output = $(sample_dir)/basic-cpu.out
+error = $(sample_dir)/basic-cpu.err
+log = basic-cpu.log
+
+request_cpus = 1
+request_memory = 1GB
+request_disk = 1GB
+
+queue

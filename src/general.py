@@ -28,18 +28,33 @@ from datetime import datetime
 import argparse
 from math import ceil
 
+def get_resource_classad(cm: str = "cm-1.ospool.osg-htc.org") -> str:
+    """
+    Usage: determine the classad to query the central manager for the resource names
+    @return: string of the classad of the desired resource name
+    """
+    if cm == "cm-1.ospool.osg-htc.org":
+        resource_classad: str = "GLIDEIN_ResourceName"
+    else:
+        resource_classad = "Machine"
+    
+    return resource_classad
 
-def get_resources() -> dict:
+
+def get_resources(cm: str = "cm-1.ospool.osg-htc.org") -> dict:
     """
     Usage: query the collector for a list of resources currently in the OSPool
-    @return: dictionary whose keys are the names of all unique GLIDEIN_ResourceName s
-             currently visible in the OSPool
+    @return: dictionary whose keys are the names of all unique ResourceName s
+             currently visible in the HTCondor pool
     """
-    collector = htcondor2.Collector("cm-1.ospool.osg-htc.org")
+    collector = htcondor2.Collector(cm)
+
+    resource_classad: str = get_resource_classad(cm)
+
     resources = collector.query(
         ad_type=htcondor2.AdTypes.StartDaemon,
-        constraint="!isUndefined(GLIDEIN_ResourceName)",
-        projection=["GLIDEIN_ResourceName"],
+        constraint=f"!isUndefined({resource_classad})",
+        projection=[resource_classad],
     )
 
     unique_resources = dict()
@@ -47,10 +62,10 @@ def get_resources() -> dict:
     # eliminate repeat resources to produce a unique list
     # using a dictionary to count number of occurrences, but this count is unused at the moment
     for resource in resources:
-        if resource["GLIDEIN_ResourceName"] in unique_resources:
-            unique_resources[resource["GLIDEIN_ResourceName"]] += 1
+        if resource[resource_classad] in unique_resources:
+            unique_resources[resource[resource_classad]] += 1
         else:
-            unique_resources[resource["GLIDEIN_ResourceName"]] = 1
+            unique_resources[resource[resource_classad]] = 1
 
     return unique_resources
 
@@ -84,9 +99,9 @@ def run_exerciser(args: argparse.Namespace):
     # prints the list of currenlt available resources to the command line
     if args.snapshot:
         print("Here is a list of all currently available resources:")
-        resources = get_resources()
+        resources = get_resources(args.central_manager)
         for resource in resources.keys():
-            print(resource)
+            print(f'  {resource}')
         print("End of resource list")
         sys.exit(0)
 
@@ -95,7 +110,7 @@ def run_exerciser(args: argparse.Namespace):
     if args.print_tests:
         print("Here is a list of all tests in the test dir:")
         for test in tests_dir.iterdir():
-            print(test.name)
+            print(f'  {test.name}')
         print("End of test list")
         sys.exit(0)
 
@@ -118,7 +133,7 @@ def run_exerciser(args: argparse.Namespace):
     # -b option
     # controls whether the excersier runs. set to True by default
     if args.run:
-        execute_tests(tests_dir, working_dir, args.tests, args.resource_sample_size)
+        execute_tests(tests_dir, working_dir, args.tests, args.resource_sample_size, args.central_manager)
 
 
 def parse_date(date_from_cla: str) -> str:
@@ -155,7 +170,8 @@ def parse_date(date_from_cla: str) -> str:
     return format_date
 
 
-def execute_tests(tests_dir: Path, working_dir: Path, test_list: list, sample_percent: float):
+def execute_tests(tests_dir: Path, working_dir: Path, test_list: list, sample_percent: float,
+                  cm: str):
     """
     Usage: builds working file system and submits tests
     @param tests_dir: directory containing all exerciser tests
@@ -173,13 +189,15 @@ def execute_tests(tests_dir: Path, working_dir: Path, test_list: list, sample_pe
         with open(
             os.path.join(timestamp_dir, "resource_list.txt"), "w"
         ) as resource_list:
-            resources = get_resources()
+            resources = get_resources(cm)
             for resource in resources.keys():
                 resource_list.write(f"{resource}\n")
     else:
         # need to wait 1 min to allow for unique dir names
         print("Error: Please wait at least 1 minute between succesive runs")
         sys.exit(1)
+
+    resource_classad: str = get_resource_classad(cm)
 
     # where the magic happens!
     # loop through every test returned by iter_tests, create execution dirs for them using
@@ -195,7 +213,7 @@ def execute_tests(tests_dir: Path, working_dir: Path, test_list: list, sample_pe
         schedd = htcondor2.Schedd()
 
         os.chdir(execute_dir)
-        job = generate_sub_object(sub_file, test.name, abs_timestamp_dir)
+        job = generate_sub_object(sub_file, test.name, abs_timestamp_dir, resource_classad)
 
         item_data = []
         for resource in resources.keys():
@@ -289,7 +307,10 @@ def create_test_execute_dir(timestamp_dir: Path, test_dir: Path) -> tuple:
     return (execute_dir, sub_file)
 
 
-def generate_sub_object(sub_file: Path, test_name: str, timestamp_dir: str) -> htcondor2.Submit:
+def generate_sub_object(
+        sub_file: Path, test_name: str, timestamp_dir: str, 
+        resource_classad: str = "GLIDEIN_ResourceName"
+        ) -> htcondor2.Submit:
     """
     Usage: create an htcondor Submit object based on sub_file targetted to resource
     @param sub_file: general submit file to parse through to create Submit object
@@ -307,7 +328,7 @@ def generate_sub_object(sub_file: Path, test_name: str, timestamp_dir: str) -> h
     job.setSubmitMethod(99, True)
 
     # add requirement to land on target ResourceName
-    req_expr = 'TARGET.GLIDEIN_ResourceName == "$(ResourceName)"'
+    req_expr = f'TARGET.{resource_classad} == "$(ResourceName)"'
     req = job.get("Requirements")
     job["Requirements"] = req_expr if req is None else req_expr + f" && ({req})"
 
@@ -331,7 +352,7 @@ def generate_sub_object(sub_file: Path, test_name: str, timestamp_dir: str) -> h
     job["submit_event_notes"] = f"exerciser_info:{test_name},$(ResourceName),$(SampleNumber)"
 
     # add execute attributes
-    job["ulog_execute_attrs"] = "GLIDEIN_ResourceName"
+    job["ulog_execute_attrs"] = resource_classad
 
     # add pool exerciser identifier attributes
     job["My.EXERCISER_Job"] = "true"

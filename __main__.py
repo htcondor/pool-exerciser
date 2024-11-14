@@ -113,6 +113,17 @@ def parse_cla() -> argparse.Namespace:
         + "should be a float between 0.0 (exclusive) and 1.0 (inclusive).",
     )
 
+    parser.add_argument(
+        "-cm",
+        "--central-manager",
+        metavar="cm.pool.domain",
+        dest="central_manager",
+        type=str,
+        default="cm-1.ospool.osg-htc.org",
+        help="Specifies the address of the HTCondor Central Manager."
+        + "Used for querying the resources available in the corresponding HTC pool."
+    )
+
     return parser.parse_args()
 
 
